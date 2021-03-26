@@ -4,8 +4,9 @@ use event::*;
 use std::io;
 use std::cmp::Ordering;
 
-use tui::{Terminal, backend::TermionBackend, layout::{Constraint, Direction, Layout, Alignment}, style::{Color, Style}, text::{Span, Spans}, widgets::Paragraph};
+use tui::{Terminal, backend::TermionBackend, layout::{Constraint, Direction, Layout}, style::{Color, Style}, text::{Span, Spans}, widgets::Paragraph};
 use termion::{event::Key, raw::IntoRawMode};
+
 fn main() -> Result<(), io::Error> {
     let stdout = io::stdout().into_raw_mode()?;
     let backend = TermionBackend::new(stdout);
@@ -16,14 +17,14 @@ fn main() -> Result<(), io::Error> {
     let test_str: String = String::from("This is a test");
 
     let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .margin(5)
+        .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(100)])
+        .margin(1)
         .split(terminal.size().unwrap());
 
     print!("{}", termion::clear::All);
     print!("{}", termion::cursor::SteadyBar);
-
+   
     loop {
         terminal.draw(|f| {
             let mut to_be_rendered_str: Vec<Span> = vec![];
@@ -31,7 +32,7 @@ fn main() -> Result<(), io::Error> {
             for (index, c) in test_str.split("").enumerate() {
                 match index.cmp(&current_index) {
                     Ordering::Equal => {
-                        to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::Green)));
+                        to_be_rendered_str.push(Span::styled(c, Style::default()));
                     },
 
                     Ordering::Less => {
@@ -44,21 +45,20 @@ fn main() -> Result<(), io::Error> {
                 }
             }
 
-            f.render_widget(Paragraph::new(Spans::from(to_be_rendered_str.clone())).alignment(Alignment::Center), chunks[0]);
+            f.render_widget(Paragraph::new(Spans::from(to_be_rendered_str.clone())), chunks[0]);
+            f.set_cursor(chunks[0].x + current_index as u16 - 1, chunks[0].y);
         }).unwrap();
 
         if let Ok(Event::Input(event)) = events.next() {
             match event {
                 Key::Char(c) => {
                     match c {
+                        'q' => break,
+
                         _ => {
                             current_index += 1;
                         }
                     }
-                }
-
-                Key::Esc => {
-                    break
                 }
 
                 Key::Backspace => {
