@@ -4,7 +4,7 @@ use event::*;
 use std::io;
 use std::cmp::Ordering;
 
-use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Direction, Layout}, style::{Color, Modifier, Style}, text::{Span, Spans}, widgets::Paragraph};
+use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans}, widgets::Paragraph};
 use termion::{event::Key, raw::IntoRawMode};
 use std::time::Instant;
 use std::env;
@@ -57,13 +57,15 @@ async fn main() -> Result<(), io::Error> {
                 let blue = Style::default().fg(Color::Blue);
 
                 let spans: Vec<Span> = vec![
-                    Span::styled("WPM", blue.add_modifier(Modifier::BOLD)),
+                    Span::styled("WPM", blue.add_modifier(Modifier::BOLD)), 
                     Span::styled(format!(": {:.2} | ", wpm), blue),
                     Span::styled("Time used", blue.add_modifier(Modifier::BOLD)),
                     Span::styled(format!(": {:.1}s\n\n", time_taken as f64 / 1000 as f64), blue),
+                    Span::styled(" - Q", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to quit"),
                 ];
                 
-                f.render_widget(Paragraph::new(Spans::from(spans)).alignment(Alignment::Center), chunks[0]);
+                f.render_widget(Paragraph::new(Spans::from(spans)).alignment(Alignment::Center), chunks[0].inner(&Margin { horizontal: 0, vertical: chunks[0].height / 2 }));
             } else {
                 for (index, c) in word_string.split("").enumerate() {
                     match index.cmp(&current_index) {
@@ -85,8 +87,9 @@ async fn main() -> Result<(), io::Error> {
                     }
                 }
 
-                f.render_widget(Paragraph::new(Spans::from(to_be_rendered_str.clone())), chunks[0]);
-                f.set_cursor(chunks[0].x + current_index as u16 - 1, chunks[0].y);
+                f.render_widget(Paragraph::new(Spans::from(to_be_rendered_str.clone())).alignment(Alignment::Center), chunks[0].inner(&Margin { horizontal: 0, vertical: chunks[0].height / 2 }));
+
+                f.set_cursor(chunks[0].x + chunks[0].width / 2 + current_index as u16 - to_be_rendered_str.len() as u16 / 2, chunks[0].y + chunks[0].height / 2);
             }
         }).unwrap();
 
