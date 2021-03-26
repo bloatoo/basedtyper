@@ -4,7 +4,7 @@ use event::*;
 use std::io;
 use std::cmp::Ordering;
 
-use tui::{Terminal, backend::TermionBackend, layout::{Constraint, Direction, Layout}, style::{Color, Style}, text::{Span, Spans}, widgets::Paragraph};
+use tui::{Terminal, backend::TermionBackend, layout::{Constraint, Direction, Layout}, style::{Color, Style}, text::{Span, Text, Spans}, widgets::Paragraph};
 use termion::{event::Key, raw::IntoRawMode};
 
 fn main() -> Result<(), io::Error> {
@@ -14,6 +14,7 @@ fn main() -> Result<(), io::Error> {
     let events = Events::new();
 
     let mut current_index: usize = 1;
+    let mut input_string: String = String::new();
     let test_str: String = String::from("This is a test");
 
     let chunks = Layout::default()
@@ -29,24 +30,32 @@ fn main() -> Result<(), io::Error> {
         terminal.draw(|f| {
             let mut to_be_rendered_str: Vec<Span> = vec![];
 
-            for (index, c) in test_str.split("").enumerate() {
-                match index.cmp(&current_index) {
-                    Ordering::Equal => {
-                        to_be_rendered_str.push(Span::styled(c, Style::default()));
-                    },
+            if test_str == input_string {
+                f.render_widget(Paragraph::new(Text::from("Well done!")).style(Style::default().fg(Color::Blue)), chunks[0]);
+            } else {
+                for (index, c) in test_str.split("").enumerate() {
+                    match index.cmp(&current_index) {
+                        Ordering::Equal => {
+                            to_be_rendered_str.push(Span::styled(c, Style::default()));
+                        },
 
-                    Ordering::Less => {
-                        to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::DarkGray)));
-                    }
-
-                    _ => {
-                        to_be_rendered_str.push(Span::styled(c, Style::default()));
+                        Ordering::Less => {
+                            if input_string[..current_index - 1] != test_str[..current_index - 1] {
+                                to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::Red)));
+                            } else {
+                                to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::DarkGray)));
+                            }
+                        }
+    
+                        _ => {
+                            to_be_rendered_str.push(Span::styled(c, Style::default()));
+                        }
                     }
                 }
-            }
 
-            f.render_widget(Paragraph::new(Spans::from(to_be_rendered_str.clone())), chunks[0]);
-            f.set_cursor(chunks[0].x + current_index as u16 - 1, chunks[0].y);
+                f.render_widget(Paragraph::new(Spans::from(to_be_rendered_str.clone())), chunks[0]);
+                f.set_cursor(chunks[0].x + current_index as u16 - 1, chunks[0].y);
+            }
         }).unwrap();
 
         if let Ok(Event::Input(event)) = events.next() {
@@ -54,16 +63,19 @@ fn main() -> Result<(), io::Error> {
                 Key::Char(c) => {
                     match c {
                         'q' => break,
-
                         _ => {
-                            current_index += 1;
+                            if current_index <= test_str.len() {
+                                current_index += 1;
+                                input_string.push(c);
+                            }
                         }
                     }
-                }
+                }   
 
                 Key::Backspace => {
                     if current_index - 1 > 0 {
                         current_index -= 1;
+                        input_string.pop();
                     }
                 }
 
