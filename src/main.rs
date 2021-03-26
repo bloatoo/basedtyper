@@ -4,7 +4,7 @@ use event::*;
 use std::io;
 use std::cmp::Ordering;
 
-use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans}, widgets::Paragraph};
+use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans, Text}, widgets::Paragraph};
 use termion::{event::Key, raw::IntoRawMode};
 use std::time::Instant;
 use std::env;
@@ -87,6 +87,9 @@ async fn main() -> Result<(), io::Error> {
                     }
                 }
 
+                let wpm = (input_string.len() as f64 / 5 as f64) / ((now.elapsed().as_millis() as f64 / 1000 as f64) / 60 as f64);
+
+                f.render_widget(Paragraph::new(Text::from(format!("WPM: {:.2}", wpm))).alignment(Alignment::Center), chunks[0].inner(&Margin { horizontal: 0, vertical: chunks[0].height / 3 }));
                 f.render_widget(Paragraph::new(Spans::from(to_be_rendered_str.clone())).alignment(Alignment::Center), chunks[0].inner(&Margin { horizontal: 0, vertical: chunks[0].height / 2 }));
 
                 f.set_cursor(chunks[0].x + chunks[0].width / 2 + current_index as u16 - to_be_rendered_str.len() as u16 / 2, chunks[0].y + chunks[0].height / 2);
