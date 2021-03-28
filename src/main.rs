@@ -1,4 +1,3 @@
-#![feature(async_closure)]
 mod event;
 mod wordlist_parser;
 
