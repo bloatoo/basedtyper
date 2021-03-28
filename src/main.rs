@@ -1,5 +1,6 @@
 #![feature(async_closure)]
 mod event;
+mod wordlist_parser;
 
 use event::*;
 use serde_json::Value;
@@ -9,7 +10,7 @@ use std::cmp::Ordering;
 use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans, Text}, widgets::Paragraph};
 use termion::{event::Key, raw::IntoRawMode};
 use std::time::Instant;
-use std::env;
+//use std::env;
 
 // use serde_json::Value;
 
@@ -19,17 +20,28 @@ async fn main() -> Result<(), io::Error> {
     let backend = TermionBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut word_count = env::args().collect::<Vec<String>>()[1].parse::<u32>();
+    /*let mut word_count = env::args().collect::<Vec<String>>()[1].parse::<u32>();
 
     if let Err(_) = word_count {
         word_count = Ok(10)
-    }
+    }*/
 
     let mut definition_string = String::new();
 
-    let client = reqwest::Client::new();
+    //let client = reqwest::Client::new();
+    
+    let words: Vec<(String, String)> = wordlist_parser::parse("example-wordlist.txt").unwrap();
 
-    let res = client.get(&format!("https://random-word-api.herokuapp.com/word?number={}", word_count.unwrap())[..]);
+    let mut word_string = String::new();
+
+    for word in words {
+        word_string.push_str(&(word.0 + " ")[..]);
+        definition_string.push_str(&(word.1 + "\n")[..]);
+    }
+    
+    let word_string = word_string.trim_end();
+
+    /*let res = client.get(&format!("https://random-word-api.herokuapp.com/word?number={}", word_count.unwrap())[..]);
     let text = &res.send().await.unwrap().text().await.unwrap()[..];
 
     let words: Vec<&str> = serde_json::from_str(&text[..]).unwrap();
@@ -47,7 +59,7 @@ async fn main() -> Result<(), io::Error> {
         } else {
             definition_string.push_str("No definitions found\n");
         }
-    }
+    }*/
 
     let events = Events::new();
 
