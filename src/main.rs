@@ -2,64 +2,66 @@
 mod event;
 mod wordlist_parser;
 
-use event::*;
-use serde_json::Value;
-use std::{io, sync::mpsc, thread};
-use std::cmp::Ordering;
+use std::{io, env, cmp::Ordering, time::Instant};
 
+use event::*;
+
+use serde_json::Value;
 use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans, Text}, widgets::Paragraph};
 use termion::{event::Key, raw::IntoRawMode};
-use std::time::Instant;
-//use std::env;
-
-// use serde_json::Value;
 
 #[tokio::main]
 async fn main() -> Result<(), io::Error> {
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() < 3 {
+        println!("usage:\n\r\t{} random <word count>\n\r\t{} wordlist <path to wordlist>", &args[0], &args[0]);
+        std::process::exit(0);
+    }
+
     let stdout = io::stdout().into_raw_mode()?;
     let backend = TermionBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-
-    /*let mut word_count = env::args().collect::<Vec<String>>()[1].parse::<u32>();
-
-    if let Err(_) = word_count {
-        word_count = Ok(10)
-    }*/
-
-    let mut definition_string = String::new();
-
-    //let client = reqwest::Client::new();
     
-    let words: Vec<(String, String)> = wordlist_parser::parse("example-wordlist.txt").unwrap();
+    let mut words: Vec<(String, String)> = Vec::new();
 
-    let mut word_string = String::new();
+    match &args[1][..] {
+        "random" => {
+            let mut word_count = env::args().collect::<Vec<String>>()[2].parse::<u32>();
 
-    for word in words {
-        word_string.push_str(&(word.0 + " ")[..]);
-        definition_string.push_str(&(word.1 + "\n")[..]);
-    }
+            if let Err(_) = word_count {
+                word_count = Ok(10)
+            }
+
+            let client = reqwest::Client::new();
+            let res = client.get(&format!("https://random-word-api.herokuapp.com/word?number={}", word_count.unwrap())[..]);
+            let text = &res.send().await.unwrap().text().await.unwrap()[..];
+
+            let local_words: Vec<&str> = serde_json::from_str(&text[..]).unwrap();
     
-    let word_string = word_string.trim_end();
+            for word in local_words {
+                let other_res = client.get(&format!("https://api.dictionaryapi.dev/api/v2/entries/en_US/{}", word)[..]).send().await.unwrap().text().await.unwrap();
 
-    /*let res = client.get(&format!("https://random-word-api.herokuapp.com/word?number={}", word_count.unwrap())[..]);
-    let text = &res.send().await.unwrap().text().await.unwrap()[..];
+                let json: Value = serde_json::from_str(&other_res[..]).unwrap();
+                let value = json[0]["meanings"][0]["definitions"][0]["definition"].as_str();
 
-    let words: Vec<&str> = serde_json::from_str(&text[..]).unwrap();
+                if let Some(val) = value {
+                    words.push((String::from(word), String::from(val) + "\n"));
+                } else {
+                    words.push((String::from(word), String::from("No definitions found\n")));
+                }
+            }
 
-    let word_string = words.join(" ");
-
-    for word in words {
-        let other_res = client.get(&format!("https://api.dictionaryapi.dev/api/v2/entries/en_US/{}", word)[..]).send().await.unwrap().text().await.unwrap();
-
-        let json: Value = serde_json::from_str(&other_res[..]).unwrap();
-        let value = json[0]["meanings"][0]["definitions"][0]["definition"].as_str();
-
-        if let Some(val) = value {
-            definition_string.push_str(&(String::from(val) + "\n")[..]);
-        } else {
-            definition_string.push_str("No definitions found\n");
         }
-    }*/
+        "wordlist" => {
+            let path = &args[2];
+            words = wordlist_parser::parse(path).unwrap();
+        }
+        _ => ()
+    }
+
+    let word_string = words.iter().map(|elem| elem.clone().0).collect::<Vec<String>>().join(" ");
+    let word_string = word_string.trim_end();
 
     let events = Events::new();
 
@@ -121,7 +123,7 @@ async fn main() -> Result<(), io::Error> {
 
                 let wpm = (input_string.len() as f64 / 5 as f64) / ((timer.elapsed().as_millis() as f64 / 1000 as f64) / 60 as f64);
 
-                let defs: Vec<&str> = definition_string.split("\n").collect();
+                let defs: Vec<&String> = words.iter().map(|elem| &elem.1).collect();
 
                 f.render_widget(Paragraph::new(Text::from(format!("WPM: {:.2}", wpm))).alignment(Alignment::Center), chunks[0].inner(&Margin { horizontal: 0, vertical: chunks[0].height / 4 }));
                 f.render_widget(Paragraph::new(Spans::from(to_be_rendered_str.clone())).alignment(Alignment::Center), chunks[0].inner(&Margin { horizontal: 0, vertical: chunks[0].height / 2 }));
@@ -139,10 +141,12 @@ async fn main() -> Result<(), io::Error> {
                             timer_is_going = true;
                             timer = Instant::now();
                         }
+
                         if current_index <= word_string.len() {
                             current_index += 1;
                             input_string.push(c);
                         }
+
                         if word_string == input_string {
                             end = true;
                             time_taken = timer.elapsed().as_millis();
@@ -150,6 +154,7 @@ async fn main() -> Result<(), io::Error> {
                     } else {
                         match c {
                             'q' => break,
+                            
                             _ => ()
                         }
                     }
