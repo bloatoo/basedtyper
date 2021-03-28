@@ -97,8 +97,10 @@ async fn main() -> Result<(), io::Error> {
                     Span::styled(format!(": {:.2} | ", wpm), blue),
                     Span::styled("Time used", blue.add_modifier(Modifier::BOLD)),
                     Span::styled(format!(": {:.1}s\n\n", time_taken as f64 / 1000 as f64), blue),
-                    Span::styled(" - Q", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to quit"),
+                    Span::styled(" - q", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to quit |"),
+                    Span::styled(" r", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to restart"),
                 ];
                 
                 f.render_widget(Paragraph::new(Spans::from(spans)).alignment(Alignment::Center), chunks[0].inner(&Margin { horizontal: 0, vertical: chunks[0].height / 2 }));
@@ -165,6 +167,14 @@ async fn main() -> Result<(), io::Error> {
                     } else {
                         match c {
                             'q' => break,
+                            'r' => {
+                                end = false;
+                                input_string = String::new();
+                                current_index = 1;
+                                timer_is_going = false;
+                                time_taken = 0;
+                                timer = Instant::now();
+                            }
                             
                             _ => ()
                         }
