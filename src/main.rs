@@ -111,7 +111,16 @@ async fn main() -> Result<(), io::Error> {
 
                         Ordering::Less => {
                             if input_string[..current_index - 1] != word_string[..current_index - 1] {
-                                to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::Red)));
+                                let check = input_string.rfind(" ");
+                                if let Some(idx) = check {
+                                    if index > idx {
+                                        to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::Red)));
+                                    } else {
+                                        to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::DarkGray)));
+                                    }
+                                } else {
+                                    to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::Red)));
+                                }
                             } else {
                                 to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::DarkGray)));
                             }
