@@ -15,7 +15,9 @@ async fn main() -> Result<(), io::Error> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 3 {
-        println!("usage:\n\r\t{} random <word count>\n\r\t{} wordlist <path to wordlist>", &args[0], &args[0]);
+        println!("usage:\n \
+            \r{} random <word count>            fetches random words and their definitions from APIs
+            \r{} wordlist <path to wordlist>    uses a local file as a wordlist", &args[0], &args[0]);
         std::process::exit(0);
     }
 
