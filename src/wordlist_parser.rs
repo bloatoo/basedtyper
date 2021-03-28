@@ -1,5 +1,5 @@
-use std::{fs, path::Path};
 use std::io;
+use std::{fs, path::Path};
 
 pub fn parse<T: AsRef<Path>>(path: T) -> Result<Vec<(String, String)>, io::Error> {
     let file = fs::read_to_string(path);
