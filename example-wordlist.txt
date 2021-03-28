@@ -1,5 +1,5 @@
-first_word
-The first word of the wordlist
+first
+Coming before all others in time or order; earliest; 1st.
 
-second_word
-Just another word in the wordlist
+second
+Formally support or endorse (a nomination or resolution or its proposer) as a necessary preliminary to adoption or further discussion.
