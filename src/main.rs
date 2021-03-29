@@ -16,28 +16,30 @@ use tui::{
     Terminal,
 };
 
+fn usage(args: &Vec<String>) -> () {
+    println!(
+        "basedtyper
+
+        \rusage:\n \
+        \r {} random <word count>            fetches random words and their definitions from APIs
+        \r {} wordlist <path to wordlist>    uses a local file as a wordlist
+        
+
+        \roptions:\n \
+        \r --no-defs                       disable definitions for words
+        ",
+        &args[0], &args[0]
+    )
+}
 #[tokio::main]
 async fn main() -> Result<(), io::Error> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 3 {
-        println!(
-            "usage:\n \
-            \r {} random <word count>            fetches random words and their definitions from APIs
-            \r {} wordlist <path to wordlist>    uses a local file as a wordlist
-            
-
-            \roptions:\n \
-            \r --no-defs                       disable definitions for words
-            ",
-            &args[0], &args[0]
-        );
-        std::process::exit(0);
+        usage(&args);
+        std::process::exit(1);
     }
 
-    let stdout = io::stdout().into_raw_mode()?;
-    let backend = TermionBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
 
     let mut words: Vec<(String, String)> = Vec::new();
 
@@ -88,11 +90,24 @@ async fn main() -> Result<(), io::Error> {
         }
 
         "wordlist" => {
-            let path = &args[2];
-            words = wordlist_parser::parse(path, &args).unwrap();
+            let parsed_words = wordlist_parser::parse(&args[2], &args);
+            if let Err(err) = parsed_words {
+                println!("\"{}\" is not a valid wordlist: {}", &args[2], err.to_string());
+                std::process::exit(1);
+            }
+
+            words = parsed_words.unwrap();
         }
-        _ => (),
+
+        _ => {
+            usage(&args);
+            std::process::exit(1);
+        },
     }
+
+    let stdout = io::stdout().into_raw_mode()?;
+    let backend = TermionBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
 
     let word_string = words
         .iter()
