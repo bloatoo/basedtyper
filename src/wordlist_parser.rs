@@ -1,7 +1,7 @@
 use std::io;
 use std::{fs, path::Path};
 
-pub fn parse<T: AsRef<Path>>(path: T) -> Result<Vec<(String, String)>, io::Error> {
+pub fn parse<T: AsRef<Path>>(path: T, args: &Vec<String>) -> Result<Vec<(String, String)>, io::Error> {
     let file = fs::read_to_string(path);
 
     if let Err(err) = file {
@@ -15,7 +15,11 @@ pub fn parse<T: AsRef<Path>>(path: T) -> Result<Vec<(String, String)>, io::Error
 
         chunks.iter().for_each(|chunk| {
             let word: Vec<&str> = chunk.split("\n").collect();
-            words.push((String::from(word[0]), String::from(word[1])));
+            if let Some(_) = args.iter().find(|arg| arg == &&String::from("--no-defs")) {
+                words.push((String::from(word[0]), String::new()));
+            } else {
+                words.push((String::from(word[0]), String::from(word[1])));
+            }
         });
 
         return Ok(words);

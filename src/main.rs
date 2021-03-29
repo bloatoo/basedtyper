@@ -23,8 +23,13 @@ async fn main() -> Result<(), io::Error> {
     if args.len() < 3 {
         println!(
             "usage:\n \
-            \r{} random <word count>            fetches random words and their definitions from APIs
-            \r{} wordlist <path to wordlist>    uses a local file as a wordlist",
+            \r {} random <word count>            fetches random words and their definitions from APIs
+            \r {} wordlist <path to wordlist>    uses a local file as a wordlist
+            
+
+            \roptions:\n \
+            \r --no-defs                       disable definitions for words
+            ",
             &args[0], &args[0]
         );
         std::process::exit(0);
@@ -55,30 +60,36 @@ async fn main() -> Result<(), io::Error> {
 
             let local_words: Vec<&str> = serde_json::from_str(&text[..]).unwrap();
 
-            for word in local_words {
-                let other_res = client
-                    .get(&format!("https://api.dictionaryapi.dev/api/v2/entries/en_US/{}", word)[..],)
-                    .send()
-                    .await
-                    .unwrap()
-                    .text()
-                    .await
-                    .unwrap();
+            if let None = args.iter().find(|val| val == &&String::from("--no-defs")) {
+                for word in local_words {
+                    let other_res = client
+                        .get(&format!("https://api.dictionaryapi.dev/api/v2/entries/en_US/{}", word)[..],)
+                        .send()
+                        .await
+                        .unwrap()
+                        .text()
+                        .await
+                        .unwrap();
 
-                let json: Value = serde_json::from_str(&other_res[..]).unwrap();
-                let value = json[0]["meanings"][0]["definitions"][0]["definition"].as_str();
+                    let json: Value = serde_json::from_str(&other_res[..]).unwrap();
+                    let value = json[0]["meanings"][0]["definitions"][0]["definition"].as_str();
 
-                if let Some(val) = value {
-                    words.push((String::from(word), String::from(val) + "\n"));
-                } else {
-                    words.push((String::from(word), String::from("No definitions found\n")));
+                    if let Some(val) = value {
+                        words.push((String::from(word), String::from(val) + "\n"));
+                    } else {
+                        words.push((String::from(word), String::from("No definitions found\n")));
+                    }
+                }
+            } else {
+                for word in local_words {
+                    words.push((String::from(word), String::from("")));
                 }
             }
         }
 
         "wordlist" => {
             let path = &args[2];
-            words = wordlist_parser::parse(path).unwrap();
+            words = wordlist_parser::parse(path, &args).unwrap();
         }
         _ => (),
     }
@@ -207,9 +218,10 @@ async fn main() -> Result<(), io::Error> {
                         }),
                     );
 
+                    let index = input_string.split(" ").collect::<Vec<&str>>().len() - 1;
                     f.render_widget(
                         Paragraph::new(Spans::from(
-                            defs[input_string.split(" ").collect::<Vec<&str>>().len() - 1].clone(),
+                            if defs.len() > index { defs[index] } else { "" }
                         ))
                         .alignment(Alignment::Center),
                         chunks[0].inner(&Margin {
