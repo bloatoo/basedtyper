@@ -1,9 +1,11 @@
 mod event;
+mod word;
 mod wordlist_parser;
 
 use std::{cmp::Ordering, env, io, time::Instant};
 
 use event::*;
+use word::Word;
 
 use serde_json::Value;
 use termion::{event::Key, raw::IntoRawMode};
@@ -16,7 +18,7 @@ use tui::{
     Terminal,
 };
 
-fn usage(args: &Vec<String>) -> () {
+fn usage(args: &[String]) {
     println!(
         "basedtyper
 
@@ -24,13 +26,13 @@ fn usage(args: &Vec<String>) -> () {
         \r {} random <word count>            fetches random words and their definitions from APIs
         \r {} wordlist <path to wordlist>    uses a local file as a wordlist
         
-
         \roptions:\n \
         \r --no-defs                       disable definitions for words
         ",
         &args[0], &args[0]
     )
 }
+
 #[tokio::main]
 async fn main() -> Result<(), io::Error> {
     let args: Vec<String> = env::args().collect();
@@ -40,14 +42,13 @@ async fn main() -> Result<(), io::Error> {
         std::process::exit(1);
     }
 
-
-    let mut words: Vec<(String, String)> = Vec::new();
+    let mut words: Vec<Word> = Vec::new();
 
     match &args[1][..] {
         "random" => {
             let mut word_count = env::args().collect::<Vec<String>>()[2].parse::<u32>();
 
-            if let Err(_) = word_count {
+            if word_count.is_err() {
                 word_count = Ok(10)
             }
 
@@ -60,12 +61,17 @@ async fn main() -> Result<(), io::Error> {
             );
             let text = &res.send().await.unwrap().text().await.unwrap()[..];
 
-            let local_words: Vec<&str> = serde_json::from_str(&text[..]).unwrap();
+            let local_words: Vec<&str> = serde_json::from_str(text).unwrap();
 
-            if let None = args.iter().find(|val| val == &&String::from("--no-defs")) {
+            if args.iter().find(|val| val == &&String::from("--no-defs")).is_none() {
                 for word in local_words {
                     let other_res = client
-                        .get(&format!("https://api.dictionaryapi.dev/api/v2/entries/en_US/{}", word)[..],)
+                        .get(
+                            &format!(
+                                "https://api.dictionaryapi.dev/api/v2/entries/en_US/{}",
+                                word
+                            )[..],
+                        )
                         .send()
                         .await
                         .unwrap()
@@ -77,22 +83,27 @@ async fn main() -> Result<(), io::Error> {
                     let value = json[0]["meanings"][0]["definitions"][0]["definition"].as_str();
 
                     if let Some(val) = value {
-                        words.push((String::from(word), String::from(val) + "\n"));
+                        words.push(Word::new(word, val));
                     } else {
-                        words.push((String::from(word), String::from("No definitions found\n")));
+                        words.push(Word::new(word, "No definitions found\n"));
                     }
                 }
             } else {
                 for word in local_words {
-                    words.push((String::from(word), String::from("")));
+                    words.push(Word::new(word, ""));
                 }
             }
         }
 
         "wordlist" => {
             let parsed_words = wordlist_parser::parse(&args[2], &args);
+
             if let Err(err) = parsed_words {
-                println!("\"{}\" is not a valid wordlist: {}", &args[2], err.to_string());
+                println!(
+                    "\"{}\" is not a valid wordlist: {}",
+                    &args[2],
+                    err.to_string()
+                );
                 std::process::exit(1);
             }
 
@@ -102,20 +113,22 @@ async fn main() -> Result<(), io::Error> {
         _ => {
             usage(&args);
             std::process::exit(1);
-        },
+        }
     }
 
     let stdout = io::stdout().into_raw_mode()?;
     let backend = TermionBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let word_string = words
+    let words_vec = words
         .iter()
-        .map(|elem| elem.clone().0)
-        .collect::<Vec<String>>()
-        .join(" ");
+        .map(|elem| elem.get_word().into())
+        .collect::<Vec<String>>();
+
+    let word_string = words_vec.join(" ");
 
     let word_string = word_string.trim_end();
+
 
     let events = Events::new();
 
@@ -125,6 +138,8 @@ async fn main() -> Result<(), io::Error> {
     let mut time_taken: u128 = 0;
     let mut timer: Instant = Instant::now();
     let mut timer_is_going = false;
+
+    let words_split = word_string.split("").collect::<Vec<&str>>();
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -141,8 +156,8 @@ async fn main() -> Result<(), io::Error> {
                 let mut to_be_rendered_str: Vec<Span> = vec![];
 
                 if end {
-                    let wpm =
-                        (word_string.len() as f64 / 5f64) / ((time_taken as f64 / 1000f64) / 60f64);
+                    let wpm = (word_string.len() as f64 / 5_f64)
+                        / ((time_taken as f64 / 1000_f64) / 60_f64);
 
                     let blue = Style::default().fg(Color::Blue);
 
@@ -150,10 +165,7 @@ async fn main() -> Result<(), io::Error> {
                         Span::styled("WPM", blue.add_modifier(Modifier::BOLD)),
                         Span::styled(format!(": {:.2} | ", wpm), blue),
                         Span::styled("Time used", blue.add_modifier(Modifier::BOLD)),
-                        Span::styled(
-                            format!(": {:.1}s\n\n", time_taken as f64 / 1000 as f64),
-                            blue,
-                        ),
+                        Span::styled(format!(": {:.1}s\n\n", time_taken as f64 / 1000_f64), blue),
                         Span::styled(" - q", Style::default().add_modifier(Modifier::BOLD)),
                         Span::raw(" to quit |"),
                         Span::styled(" r", Style::default().add_modifier(Modifier::BOLD)),
@@ -170,50 +182,33 @@ async fn main() -> Result<(), io::Error> {
 
                 } else {
                     for (index, c) in word_string.split("").enumerate() {
-                        match index.cmp(&current_index) {
-                            Ordering::Equal => {
-                                to_be_rendered_str.push(Span::styled(c, Style::default()));
-                            }
+                        if input_string.split("").nth(index).is_some() {
+                            match index.cmp(&current_index) {
+                                Ordering::Less => {
+                                    if input_string.split("").collect::<Vec<&str>>()[index] != words_split[index] {
+                                        to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::Red)));
 
-                            Ordering::Less => {
-                                if input_string[..current_index - 1]
-                                    != word_string[..current_index - 1]
-                                {
-                                    let check = input_string.rfind(" ");
-                                    if let Some(idx) = check {
-                                        if index > idx {
-                                            to_be_rendered_str.push(Span::styled(
-                                                c,
-                                                Style::default().fg(Color::Red),
-                                            ));
-                                        } else {
-                                            to_be_rendered_str.push(Span::styled(
-                                                c,
-                                                Style::default().fg(Color::DarkGray),
-                                            ));
-                                        }
                                     } else {
-                                        to_be_rendered_str
-                                            .push(Span::styled(c, Style::default().fg(Color::Red)));
+                                        to_be_rendered_str.push(Span::styled(
+                                            c,
+                                            Style::default().fg(Color::DarkGray),
+                                        ));
                                     }
-                                } else {
-                                    to_be_rendered_str.push(Span::styled(
-                                        c,
-                                        Style::default().fg(Color::DarkGray),
-                                    ));
                                 }
+
+                                _ => to_be_rendered_str.push(Span::styled(c, Style::default())),
                             }
 
-                            _ => {
-                                to_be_rendered_str.push(Span::styled(c, Style::default()));
-                            }
+                        } else {
+                            to_be_rendered_str.push(Span::styled(c, Style::default()));
                         }
                     }
 
-                    let wpm = (input_string.len() as f64 / 5f64)
-                        / ((timer.elapsed().as_millis() as f64 / 1000f64) / 60f64);
+                    let wpm = (input_string.len() as f64 / 5_f64)
+                        / ((timer.elapsed().as_millis() as f64 / 1000_f64) / 60_f64);
 
-                    let defs: Vec<&String> = words.iter().map(|elem| &elem.1).collect();
+                    let defs: Vec<&String> =
+                        words.iter().map(|elem| elem.get_definition()).collect();
 
                     f.render_widget(
                         Paragraph::new(Text::from(format!("WPM: {:.2}", wpm)))
@@ -233,11 +228,14 @@ async fn main() -> Result<(), io::Error> {
                         }),
                     );
 
-                    let index = input_string.split(" ").collect::<Vec<&str>>().len() - 1;
+                    let index = input_string.split(' ').count() - 1;
+
                     f.render_widget(
-                        Paragraph::new(Spans::from(
-                            if defs.len() > index { defs[index] } else { "" }
-                        ))
+                        Paragraph::new(Spans::from(if defs.len() > index {
+                            defs[index].clone()
+                        } else {
+                            String::new()
+                        }))
                         .alignment(Alignment::Center),
                         chunks[0].inner(&Margin {
                             horizontal: 0,
