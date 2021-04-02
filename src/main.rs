@@ -1,6 +1,9 @@
 mod event;
 mod word;
 mod wordlist_parser;
+mod app;
+
+use app::App;
 
 use std::{cmp::Ordering, env, io, time::Instant};
 
@@ -35,6 +38,8 @@ fn usage(args: &[String]) {
 
 #[tokio::main]
 async fn main() -> Result<(), io::Error> {
+    let app = App::default();
+
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 3 {
@@ -59,6 +64,7 @@ async fn main() -> Result<(), io::Error> {
                     word_count.unwrap()
                 )[..],
             );
+
             let text = &res.send().await.unwrap().text().await.unwrap()[..];
 
             let local_words: Vec<&str> = serde_json::from_str(text).unwrap();
@@ -96,7 +102,7 @@ async fn main() -> Result<(), io::Error> {
         }
 
         "wordlist" => {
-            let parsed_words = wordlist_parser::parse(&args[2], &args);
+            let parsed_words = wordlist_parser::parse(&args[2], &args).await;
 
             if let Err(err) = parsed_words {
                 println!(
@@ -128,7 +134,6 @@ async fn main() -> Result<(), io::Error> {
     let word_string = words_vec.join(" ");
 
     let word_string = word_string.trim_end();
-
 
     let events = Events::new();
 
@@ -196,7 +201,7 @@ async fn main() -> Result<(), io::Error> {
                                     }
                                 }
 
-                                _ => to_be_rendered_str.push(Span::styled(c, Style::default())),
+                                _ => to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::White))),
                             }
 
                         } else {
