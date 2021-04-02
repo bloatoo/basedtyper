@@ -1,9 +1,10 @@
 pub struct App {
-    state: State
+    pub state: State,
+    pub input_string: String,
 }
 
 pub enum State {
-    StartScreen,
+    MainMenu,
     EndScreen,
     TypingGame,
     TermGame
@@ -12,7 +13,8 @@ pub enum State {
 impl App {
     pub fn default() -> Self {
         Self {
-            state: State::StartScreen,
+            state: State::MainMenu,
+            input_string: String::new(),
         }
     }
 }

@@ -3,7 +3,7 @@ mod word;
 mod wordlist_parser;
 mod app;
 
-use app::App;
+use app::{App, State};
 
 use std::{cmp::Ordering, env, io, time::Instant};
 
@@ -38,7 +38,7 @@ fn usage(args: &[String]) {
 
 #[tokio::main]
 async fn main() -> Result<(), io::Error> {
-    let app = App::default();
+    let mut app = App::default();
 
     let args: Vec<String> = env::args().collect();
 
@@ -138,11 +138,8 @@ async fn main() -> Result<(), io::Error> {
     let events = Events::new();
 
     let mut current_index: usize = 1;
-    let mut input_string: String = String::new();
-    let mut end = false;
     let mut time_taken: u128 = 0;
-    let mut timer: Instant = Instant::now();
-    let mut timer_is_going = false;
+    let mut timer: Option<Instant> = None;
 
     let words_split = word_string.split("").collect::<Vec<&str>>();
 
@@ -159,100 +156,110 @@ async fn main() -> Result<(), io::Error> {
         terminal
             .draw(|f| {
                 let mut to_be_rendered_str: Vec<Span> = vec![];
-
-                if end {
-                    let wpm = (word_string.len() as f64 / 5_f64)
-                        / ((time_taken as f64 / 1000_f64) / 60_f64);
-
-                    let blue = Style::default().fg(Color::Blue);
-
-                    let spans: Vec<Span> = vec![
-                        Span::styled("WPM", blue.add_modifier(Modifier::BOLD)),
-                        Span::styled(format!(": {:.2} | ", wpm), blue),
-                        Span::styled("Time used", blue.add_modifier(Modifier::BOLD)),
-                        Span::styled(format!(": {:.1}s\n\n", time_taken as f64 / 1000_f64), blue),
-                        Span::styled(" - q", Style::default().add_modifier(Modifier::BOLD)),
-                        Span::raw(" to quit |"),
-                        Span::styled(" r", Style::default().add_modifier(Modifier::BOLD)),
-                        Span::raw(" to restart"),
-                    ];
-
-                    f.render_widget(
-                        Paragraph::new(Spans::from(spans)).alignment(Alignment::Center),
-                        chunks[0].inner(&Margin {
-                            horizontal: 0,
-                            vertical: chunks[0].height / 2,
-                        }),
-                    );
-
-                } else {
-                    for (index, c) in word_string.split("").enumerate() {
-                        if input_string.split("").nth(index).is_some() {
-                            match index.cmp(&current_index) {
-                                Ordering::Less => {
-                                    if input_string.split("").collect::<Vec<&str>>()[index] != words_split[index] {
-                                        to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::Red)));
-
-                                    } else {
-                                        to_be_rendered_str.push(Span::styled(
-                                            c,
-                                            Style::default().fg(Color::DarkGray),
-                                        ));
-                                    }
-                                }
-
-                                _ => to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::White))),
-                            }
-
-                        } else {
-                            to_be_rendered_str.push(Span::styled(c, Style::default()));
-                        }
+                
+                match app.state {
+                    State::MainMenu => {
+                        f.render_widget(Paragraph::new(Span::raw("t to start typing game")).alignment(Alignment::Center), chunks[0].inner(&Margin { horizontal: 0, vertical: chunks[0].height / 2 }));
                     }
 
-                    let wpm = (input_string.len() as f64 / 5_f64)
-                        / ((timer.elapsed().as_millis() as f64 / 1000_f64) / 60_f64);
+                    State::EndScreen => {
+                        let wpm = (word_string.len() as f64 / 5_f64)
+                            / ((time_taken as f64 / 1000_f64) / 60_f64);
+    
+                        let blue = Style::default().fg(Color::Blue);
+    
+                        let spans: Vec<Span> = vec![
+                            Span::styled("WPM", blue.add_modifier(Modifier::BOLD)),
+                            Span::styled(format!(": {:.2} | ", wpm), blue),
+                            Span::styled("Time used", blue.add_modifier(Modifier::BOLD)),
+                            Span::styled(format!(": {:.1}s\n\n", time_taken as f64 / 1000_f64), blue),
+                            Span::styled(" - q", Style::default().add_modifier(Modifier::BOLD)),
+                            Span::raw(" to quit |"),
+                            Span::styled(" r", Style::default().add_modifier(Modifier::BOLD)),
+                            Span::raw(" to restart |"),
+                            Span::styled(" m", Style::default().add_modifier(Modifier::BOLD)),
+                            Span::raw(" to go to the main menu"),
+                        ];
 
-                    let defs: Vec<&String> =
-                        words.iter().map(|elem| elem.get_definition()).collect();
+                        f.render_widget(
+                            Paragraph::new(Spans::from(spans)).alignment(Alignment::Center),
+                            chunks[0].inner(&Margin {
+                                horizontal: 0,
+                                vertical: chunks[0].height / 2,
+                            }),
+                        );
+                    }
 
-                    f.render_widget(
-                        Paragraph::new(Text::from(format!("WPM: {:.2}", wpm)))
+                    State::TypingGame => {
+                        for (index, c) in word_string.split("").enumerate() {
+                            if app.input_string.split("").nth(index).is_some() {
+                                match index.cmp(&current_index) {
+                                    Ordering::Less => {
+                                        if app.input_string.split("").collect::<Vec<&str>>()[index] != words_split[index] {
+                                            to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::Red)));
+    
+                                        } else {
+                                            to_be_rendered_str.push(Span::styled(
+                                                c,
+                                                Style::default().fg(Color::DarkGray),
+                                            ));
+                                        }
+                                    }
+    
+                                    _ => to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::White))),
+                                }
+
+                            } else {
+                                to_be_rendered_str.push(Span::styled(c, Style::default()));
+                            }
+                        }
+
+                        let wpm = (app.input_string.len() as f64 / 5_f64)
+                            / (if timer.is_some() { (timer.unwrap().elapsed().as_millis() as f64 / 1000_f64) / 60_f64 } else { 0_f64 });
+    
+                        let defs: Vec<&String> =
+                            words.iter().map(|elem| elem.get_definition()).collect();
+    
+                        f.render_widget(
+                            Paragraph::new(Text::from(format!("WPM: {:.2}", wpm)))
+                                .alignment(Alignment::Center),
+                            chunks[0].inner(&Margin {
+                                horizontal: 0,
+                                vertical: chunks[0].height / 4,
+                            }),
+                        );
+    
+                        f.render_widget(
+                            Paragraph::new(Spans::from(to_be_rendered_str.clone()))
+                                .alignment(Alignment::Center),
+                            chunks[0].inner(&Margin {
+                                horizontal: 0,
+                                vertical: chunks[0].height / 2,
+                            }),
+                        );
+    
+                        let index = app.input_string.split(' ').count() - 1;
+
+                        f.render_widget(
+                            Paragraph::new(Spans::from(if defs.len() > index {
+                                defs[index].clone()
+                            } else {
+                                String::new()
+                            }))
                             .alignment(Alignment::Center),
-                        chunks[0].inner(&Margin {
-                            horizontal: 0,
-                            vertical: chunks[0].height / 4,
-                        }),
-                    );
-
-                    f.render_widget(
-                        Paragraph::new(Spans::from(to_be_rendered_str.clone()))
-                            .alignment(Alignment::Center),
-                        chunks[0].inner(&Margin {
-                            horizontal: 0,
-                            vertical: chunks[0].height / 2,
-                        }),
-                    );
-
-                    let index = input_string.split(' ').count() - 1;
-
-                    f.render_widget(
-                        Paragraph::new(Spans::from(if defs.len() > index {
-                            defs[index].clone()
-                        } else {
-                            String::new()
-                        }))
-                        .alignment(Alignment::Center),
-                        chunks[0].inner(&Margin {
-                            horizontal: 0,
-                            vertical: chunks[0].height / 3,
-                        }),
-                    );
-
-                    f.set_cursor(
-                        chunks[0].x + chunks[0].width / 2 + current_index as u16
-                            - to_be_rendered_str.len() as u16 / 2,
-                        chunks[0].y + chunks[0].height / 2,
-                    );
+                            chunks[0].inner(&Margin {
+                                horizontal: 0,
+                                vertical: chunks[0].height / 3,
+                            }),
+                        );
+    
+                        f.set_cursor(
+                            chunks[0].x + chunks[0].width / 2 + current_index as u16
+                                - to_be_rendered_str.len() as u16 / 2,
+                            chunks[0].y + chunks[0].height / 2,
+                        );
+                    }
+                _ => (),
                 }
             })
             .unwrap();
@@ -260,37 +267,75 @@ async fn main() -> Result<(), io::Error> {
         if let Ok(Event::Input(event)) = events.next() {
             match event {
                 Key::Char(c) => {
-                    if !end {
-                        if !timer_is_going {
-                            timer_is_going = true;
-                            timer = Instant::now();
+                    match app.state {
+                        State::EndScreen => {
+                            match c {
+                                'q' => break,
+
+                                'r' => {
+                                    app.state = State::TypingGame;
+                                    timer = None;
+                                    app.input_string = String::new();
+                                    current_index = 1;
+                                    time_taken = 0;
+                                }
+
+                                'm' => {
+                                    app.state = State::MainMenu;
+                                    timer = None;
+                                    app.input_string = String::new();
+                                    current_index = 1;
+                                    time_taken = 0;
+                                }
+
+                                _ => (),
+                            }
                         }
 
-                        if current_index <= word_string.len() {
-                            current_index += 1;
-                            input_string.push(c);
+                        State::MainMenu => {
+                            match c {
+                                't' => {
+                                    app.state = State::TypingGame;
+                                }
+
+                                _ => ()
+                            }
                         }
 
-                        if word_string == input_string {
-                            end = true;
-                            time_taken = timer.elapsed().as_millis();
-                        }
-                    } else {
-                        match c {
-                            'q' => break,
-
-                            'r' => {
-                                end = false;
-                                input_string = String::new();
-                                current_index = 1;
-                                timer_is_going = false;
-                                time_taken = 0;
-                                timer = Instant::now();
+                        _ => {
+                            if timer.is_none() {
+                                timer = Some(Instant::now());
+                            }
+                            if current_index <= word_string.len() {
+                                current_index += 1;
+                                app.input_string.push(c);
                             }
 
-                            _ => (),
+                            if word_string == app.input_string {
+                                app.state = State::EndScreen;
+                                time_taken = if timer.is_some() { timer.unwrap().elapsed().as_millis() } else { 0 };
+                            }
                         }
                     }
+                }
+
+                Key::Ctrl(c) => {
+                    match app.state {
+                        State::TypingGame => {
+                            match c {
+                                'r' => {
+                                    app.state = State::TypingGame;
+                                    timer = None;
+                                    app.input_string = String::new();
+                                    current_index = 1;
+                                    time_taken = 0;
+                                }
+                                _ => ()
+                            }
+                        }
+
+                        _ => ()
+                    } 
                 }
 
                 Key::Esc => break,
@@ -298,7 +343,7 @@ async fn main() -> Result<(), io::Error> {
                 Key::Backspace => {
                     if current_index - 1 > 0 {
                         current_index -= 1;
-                        input_string.pop();
+                        app.input_string.pop();
                     }
                 }
 
