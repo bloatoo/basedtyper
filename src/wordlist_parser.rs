@@ -18,10 +18,12 @@ pub async fn parse<T: AsRef<Path>>(path: T, args: &[String]) -> Result<Vec<Word>
         chunks.iter().for_each(|chunk| {
             let word: Vec<&str> = chunk.split('\n').collect();
 
-            if args.iter().any(|arg| arg == &String::from("--no-defs")) {
-                words.push(Word::new(word[0], ""));
-            } else {
-                words.push(Word::new(word[0], word[1]));
+            if !word[0].starts_with("#") {
+                if args.iter().any(|arg| arg == &String::from("--no-defs")) {
+                    words.push(Word::new(word[0], ""));
+                } else {
+                    words.push(Word::new(word[0], word[1]));
+                }
             }
         });
 

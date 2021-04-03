@@ -161,7 +161,7 @@ async fn main() -> Result<(), io::Error> {
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(3)
+        .margin(10)
         .constraints([Constraint::Percentage(100)])
         .split(terminal.size().unwrap());
 
@@ -169,10 +169,10 @@ async fn main() -> Result<(), io::Error> {
         word_string = &word_string[..rand::thread_rng().gen_range(11..chunks[0].width - 2) as usize];
     }
 
-    let re = regex::Regex::new("[^\x00-\x7F]+").unwrap();
+    let re = regex::Regex::new("^\t\r\n\x20-\x7E]+").unwrap();
 
-    let word_string = re.replace_all(word_string, "");
-    let word_string = word_string.trim_end();
+    let word_string = re.replace_all(word_string, " ");
+    let word_string = word_string.trim();
 
 
     print!("{}", termion::clear::All);
@@ -241,8 +241,8 @@ async fn main() -> Result<(), io::Error> {
                         if app.input_string.split("").nth(index).is_some() {
                             match index.cmp(&app.current_index) {
                                 Ordering::Less => {
-                                    if app.input_string.split("").collect::<Vec<&str>>()[index] != words_split[index] {
-                                        to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::Red)));
+                                    if app.input_string.split("").collect::<Vec<&str>>()[index] != words_split[index] && word_string[..app.input_string.len() - 1] != app.input_string {
+                                        to_be_rendered_str.push(Span::styled(c, Style::default().bg(Color::Red)));
 
                                     } else {
                                         to_be_rendered_str.push(Span::styled(
