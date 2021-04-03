@@ -21,7 +21,7 @@ fn usage(args: &[String]) {
         "basedtyper
 
         \rusage:\n \
-        \r {arg} random <word count>            fetches random words and their definitions from APIs
+        \r ({arg} random <word count>           (DISABLED) fetches random words and their definitions from APIs
         \r {arg} wordlist <path to wordlist>    uses a local file as a wordlist
         \r {arg} quote                          fetches a random post from r/copypasta (UNSTABLE)
         
@@ -34,8 +34,7 @@ fn usage(args: &[String]) {
     std::process::exit(0);
 }
 
-#[tokio::main]
-async fn main() -> Result<(), io::Error> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = App::default();
 
     let args: Vec<String> = env::args().collect();
@@ -46,10 +45,8 @@ async fn main() -> Result<(), io::Error> {
 
     let mut words: Vec<Word> = Vec::new();
 
-    let client = reqwest::Client::new();
-
     match &args[1][..] {
-        "random" => {
+        /*"random" => {
             if args.len() < 3 { usage(&args); }
             let mut word_count = env::args().collect::<Vec<String>>()[2].parse::<u32>();
 
@@ -57,40 +54,30 @@ async fn main() -> Result<(), io::Error> {
                 word_count = Ok(10)
             }
 
-            let res = client.get(
+            let res = ureq::get(
                 &format!(
                     "https://random-word-api.herokuapp.com/word?number={}",
                     word_count.unwrap()
                 )[..],
-            );
+            ).call()?.into_string()?;
 
-            let text = &res.send().await.unwrap().text().await.unwrap()[..];
-
-            let local_words: Vec<&str> = serde_json::from_str(text).unwrap();
+            let local_words: Vec<&str> = serde_json::from_str(&res).unwrap();
 
             if args.iter().find(|val| val == &&String::from("--no-defs")).is_none() {
                 for word in local_words {
-                    let other_res = client
-                        .get(
+                    let other_res = ureq::get( 
                             &format!(
                                 "https://api.dictionaryapi.dev/api/v2/entries/en_US/{}",
                                 word
                             )[..]
-                        )
-                        .send()
-                        .await
-                        .unwrap()
-                        .text()
-                        .await
-                        .unwrap();
+                        ).call();
 
-                    let json: Value = serde_json::from_str(&other_res[..]).unwrap();
-                    let value = json[0]["meanings"][0]["definitions"][0]["definition"].as_str();
-
-                    if let Some(val) = value {
-                        words.push(Word::new(word, val));
-                    } else {
+                    if other_res.is_err() {
                         words.push(Word::new(word, "No definitions found\n"));
+                    } else {
+                        let json: Value = serde_json::from_str(&other_res.unwrap().into_string()?[..]).unwrap();
+                        let value = json[0]["meanings"][0]["definitions"][0]["definition"].as_str();
+                        words.push(Word::new(word, value.unwrap()));
                     }
                 }
             } else {
@@ -98,16 +85,11 @@ async fn main() -> Result<(), io::Error> {
                     words.push(Word::new(word, ""));
                 }
             }
-        }
+        }*/
 
         "quote" => {
-            let other_res = client.get("https://www.reddit.com/r/copypasta/top/.json?sort=top&t=week&showmedia=false&mediaonly=false&is_self=true&limit=100")
-                .send()
-                .await
-                .unwrap()
-                .text()
-                .await
-                .unwrap();
+            let other_res = ureq::get("https://www.reddit.com/r/copypasta/top/.json?sort=top&t=week&showmedia=false&mediaonly=false&is_self=true&limit=100")
+                .call()?.into_string()?;
 
             let json: Value = serde_json::from_str(&other_res[..]).unwrap();
 
@@ -120,7 +102,7 @@ async fn main() -> Result<(), io::Error> {
 
         "wordlist" => {
             if args.len() < 3 { usage(&args); }
-            let parsed_words = wordlist_parser::parse(&args[2], &args).await;
+            let parsed_words = wordlist_parser::parse(&args[2], &args);
 
             if let Err(err) = parsed_words {
                 println!(

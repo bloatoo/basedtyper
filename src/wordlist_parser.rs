@@ -1,13 +1,11 @@
-use std::{io, path::Path};
-use tokio::fs;
+use std::{fs, io, path::Path};
 use super::word::Word;
-use futures::future;
 
-pub async fn parse<T: AsRef<Path>>(path: T, args: &[String]) -> Result<Vec<Word>, io::Error> {
-    let file = fs::read_to_string(path).await;
+pub fn parse<T: AsRef<Path>>(path: T, args: &[String]) -> Result<Vec<Word>, io::Error> {
+    let file = fs::read_to_string(path);
 
     if let Err(err) = file {
-        future::err(err).await
+        Err(err)
     } else {
         let file = file.unwrap();
 
@@ -27,6 +25,6 @@ pub async fn parse<T: AsRef<Path>>(path: T, args: &[String]) -> Result<Vec<Word>
             }
         });
 
-        future::ok(words).await
+        Ok(words)
     }
 }
