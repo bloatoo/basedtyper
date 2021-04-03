@@ -1,5 +1,3 @@
-#![feature(async_closure)]
-
 mod event;
 mod word;
 mod wordlist_parser;
@@ -7,14 +5,14 @@ mod app;
 
 use app::{App, State};
 
-use std::{cmp::Ordering, env, io, time::Instant};
+use std::{cmp::Ordering, env, io};
 
 use event::*;
 use word::Word;
 
 use serde_json::Value;
 use termion::{event::Key, raw::IntoRawMode};
-use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Corner, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans, Text}, widgets::{List, ListItem, Paragraph}};
+use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Corner, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans, Text}, widgets::Paragraph};
 
 fn usage(args: &[String]) {
     println!(
@@ -311,6 +309,7 @@ async fn main() -> Result<(), io::Error> {
                             if app.timer.is_none() {
                                 app.start_timer();
                             }
+
                             if app.current_index <= word_string.len() {
                                 app.current_index += 1;
                                 app.input_string.push(c);
