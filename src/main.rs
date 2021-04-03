@@ -1,3 +1,5 @@
+#![feature(async_closure)]
+
 mod event;
 mod word;
 mod wordlist_parser;
@@ -12,14 +14,7 @@ use word::Word;
 
 use serde_json::Value;
 use termion::{event::Key, raw::IntoRawMode};
-use tui::{
-    backend::TermionBackend,
-    layout::{Alignment, Constraint, Direction, Layout, Margin},
-    style::{Color, Modifier, Style},
-    text::{Span, Spans, Text},
-    widgets::Paragraph,
-    Terminal,
-};
+use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Corner, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans, Text}, widgets::{List, ListItem, Paragraph}};
 
 fn usage(args: &[String]) {
     println!(
@@ -110,6 +105,7 @@ async fn main() -> Result<(), io::Error> {
                     &args[2],
                     err.to_string()
                 );
+
                 std::process::exit(1);
             }
 
@@ -137,16 +133,12 @@ async fn main() -> Result<(), io::Error> {
 
     let events = Events::new();
 
-    let mut current_index: usize = 1;
-    let mut time_taken: u128 = 0;
-    let mut timer: Option<Instant> = None;
-
     let words_split = word_string.split("").collect::<Vec<&str>>();
 
     let chunks = Layout::default()
-        .direction(Direction::Vertical)
+        .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(100)])
-        .margin(1)
+        .margin(3)
         .split(terminal.size().unwrap());
 
     print!("{}", termion::clear::All);
@@ -159,41 +151,62 @@ async fn main() -> Result<(), io::Error> {
                 
                 match app.state {
                     State::MainMenu => {
-                        f.render_widget(Paragraph::new(Span::raw("t to start typing game")).alignment(Alignment::Center), chunks[0].inner(&Margin { horizontal: 0, vertical: chunks[0].height / 2 }));
+                        let mut spans: Vec<Spans> = vec![];
+
+                        for _ in 0..chunks[0].height / 2 - 2 {
+                            spans.push(Spans::default());
+                        }
+
+                        spans.append(&mut vec![
+                            Spans::from(Span::styled("basedtyper", Style::default().fg(Color::Green))),
+                            Spans::from(Span::raw("")),
+                            Spans::from(Span::raw("t to start typing game")),
+                        ]);
+
+                        f.render_widget(Paragraph::new(spans).alignment(Alignment::Center), chunks[0]);
                     }
 
                     State::EndScreen => {
                         let wpm = (word_string.len() as f64 / 5_f64)
-                            / ((time_taken as f64 / 1000_f64) / 60_f64);
+                            / ((app.time_taken as f64 / 1000_f64) / 60_f64);
     
                         let blue = Style::default().fg(Color::Blue);
     
-                        let spans: Vec<Span> = vec![
-                            Span::styled("WPM", blue.add_modifier(Modifier::BOLD)),
-                            Span::styled(format!(": {:.2} | ", wpm), blue),
-                            Span::styled("Time used", blue.add_modifier(Modifier::BOLD)),
-                            Span::styled(format!(": {:.1}s\n\n", time_taken as f64 / 1000_f64), blue),
-                            Span::styled(" - q", Style::default().add_modifier(Modifier::BOLD)),
-                            Span::raw(" to quit |"),
-                            Span::styled(" r", Style::default().add_modifier(Modifier::BOLD)),
-                            Span::raw(" to restart |"),
-                            Span::styled(" m", Style::default().add_modifier(Modifier::BOLD)),
-                            Span::raw(" to go to the main menu"),
-                        ];
+                        let mut spans: Vec<Spans> = vec![];
+
+                        for _ in 0..chunks[0].height / 2 - 3 {
+                            spans.push(Spans::default());
+                        }
+
+                        spans.append(&mut vec![
+                            Spans::from(vec![Span::styled("WPM", blue.add_modifier(Modifier::BOLD)),
+                                Span::styled(format!(": {:.2}", wpm), blue)]),
+
+                            Spans::from(vec![Span::styled("Time used", blue.add_modifier(Modifier::BOLD)),
+                                Span::styled(format!(": {:.1}s", app.time_taken as f64 / 1000_f64), blue)]),
+
+                            Spans::from(vec![Span::raw("")]),
+
+                            Spans::from(vec![Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
+                                Span::raw(" to quit")]),
+
+                            Spans::from(vec![Span::styled("r", Style::default().add_modifier(Modifier::BOLD)),
+                                Span::raw(" to restart")]),
+
+                            Spans::from(vec![Span::styled("m", Style::default().add_modifier(Modifier::BOLD)),
+                                Span::raw(" to go to the main menu")])
+                        ]);
 
                         f.render_widget(
-                            Paragraph::new(Spans::from(spans)).alignment(Alignment::Center),
-                            chunks[0].inner(&Margin {
-                                horizontal: 0,
-                                vertical: chunks[0].height / 2,
-                            }),
+                            Paragraph::new(spans).alignment(Alignment::Center),
+                            chunks[0]
                         );
                     }
 
                     State::TypingGame => {
                         for (index, c) in word_string.split("").enumerate() {
                             if app.input_string.split("").nth(index).is_some() {
-                                match index.cmp(&current_index) {
+                                match index.cmp(&app.current_index) {
                                     Ordering::Less => {
                                         if app.input_string.split("").collect::<Vec<&str>>()[index] != words_split[index] {
                                             to_be_rendered_str.push(Span::styled(c, Style::default().fg(Color::Red)));
@@ -215,7 +228,7 @@ async fn main() -> Result<(), io::Error> {
                         }
 
                         let wpm = (app.input_string.len() as f64 / 5_f64)
-                            / (if timer.is_some() { (timer.unwrap().elapsed().as_millis() as f64 / 1000_f64) / 60_f64 } else { 0_f64 });
+                            / (if app.timer.is_some() { (app.timer.unwrap().elapsed().as_millis() as f64 / 1000_f64) / 60_f64 } else { 0_f64 });
     
                         let defs: Vec<&String> =
                             words.iter().map(|elem| elem.get_definition()).collect();
@@ -254,7 +267,7 @@ async fn main() -> Result<(), io::Error> {
                         );
     
                         f.set_cursor(
-                            chunks[0].x + chunks[0].width / 2 + current_index as u16
+                            chunks[0].x + chunks[0].width / 2 + app.current_index as u16
                                 - to_be_rendered_str.len() as u16 / 2,
                             chunks[0].y + chunks[0].height / 2,
                         );
@@ -273,19 +286,11 @@ async fn main() -> Result<(), io::Error> {
                                 'q' => break,
 
                                 'r' => {
-                                    app.state = State::TypingGame;
-                                    timer = None;
-                                    app.input_string = String::new();
-                                    current_index = 1;
-                                    time_taken = 0;
+                                    app.restart(State::TypingGame);
                                 }
 
                                 'm' => {
-                                    app.state = State::MainMenu;
-                                    timer = None;
-                                    app.input_string = String::new();
-                                    current_index = 1;
-                                    time_taken = 0;
+                                    app.restart(State::MainMenu);
                                 }
 
                                 _ => (),
@@ -303,17 +308,17 @@ async fn main() -> Result<(), io::Error> {
                         }
 
                         _ => {
-                            if timer.is_none() {
-                                timer = Some(Instant::now());
+                            if app.timer.is_none() {
+                                app.start_timer();
                             }
-                            if current_index <= word_string.len() {
-                                current_index += 1;
+                            if app.current_index <= word_string.len() {
+                                app.current_index += 1;
                                 app.input_string.push(c);
                             }
 
                             if word_string == app.input_string {
                                 app.state = State::EndScreen;
-                                time_taken = if timer.is_some() { timer.unwrap().elapsed().as_millis() } else { 0 };
+                                app.time_taken = if app.timer.is_some() { app.timer.unwrap().elapsed().as_millis() } else { 0 };
                             }
                         }
                     }
@@ -324,11 +329,7 @@ async fn main() -> Result<(), io::Error> {
                         State::TypingGame => {
                             match c {
                                 'r' => {
-                                    app.state = State::TypingGame;
-                                    timer = None;
-                                    app.input_string = String::new();
-                                    current_index = 1;
-                                    time_taken = 0;
+                                    app.restart(State::TypingGame);
                                 }
                                 _ => ()
                             }
@@ -341,8 +342,8 @@ async fn main() -> Result<(), io::Error> {
                 Key::Esc => break,
 
                 Key::Backspace => {
-                    if current_index - 1 > 0 {
-                        current_index -= 1;
+                    if app.current_index - 1 > 0 {
+                        app.current_index -= 1;
                         app.input_string.pop();
                     }
                 }
