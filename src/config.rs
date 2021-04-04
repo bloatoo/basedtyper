@@ -9,7 +9,9 @@ pub struct Config {
 
 impl Config {
     pub fn new() -> Result<Self, std::io::Error> {
-        let file_contents = std::fs::read_to_string(".config/basedtyper/config.toml");
+        let home_dir = env::var("HOME").unwrap();
+
+        let file_contents = std::fs::read_to_string(&format!("{}/.config/basedtyper/config.toml", home_dir)[..]);
 
         if let Err(err) = file_contents {
             return Err(err);

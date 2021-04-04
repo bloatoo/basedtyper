@@ -52,10 +52,10 @@ impl App {
     }
 
     pub fn locate_wordlist(&mut self, wordlist_name: &str) -> String {
-        let wordlist_name = if wordlist_name.ends_with(".txt") {
+        let wordlist_name = if wordlist_name.ends_with(".basedtyper") {
             wordlist_name.to_string()
         } else {
-            String::from(wordlist_name) + ".txt"
+            String::from(wordlist_name) + ".basedtyper"
         };
 
         let path_str = &(self.config.wordlist_directory.clone() + "/" + &wordlist_name);

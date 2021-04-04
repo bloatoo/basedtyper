@@ -18,7 +18,7 @@ fn usage(args: &[String]) {
         "basedtyper
 
         \rusage:\n \
-        \r {arg} random <path to wordlist> <count> | fetches words and their definitions from a wordlist in a random order
+        \r {arg} <path to wordlist> <count>        | fetches words and their definitions from a wordlist in a random order
         \r {arg} quote                             | fetches a random post from r/copypasta (UNSTABLE)
         
         \roptions:\n \
@@ -55,32 +55,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        "random" => {
-            if args.len() < 4 { usage(&args); }
-            let count = args[3].parse::<u32>();
+        _ => {
+            if args.len() < 3 { usage(&args); }
+            let count = args[2].parse::<u32>();
 
             if count.is_err() {
                 usage(&args);
                 std::process::exit(1);
             }
 
-            let parsed_words = wordlist_parser::parse(app.locate_wordlist(&args[2]), &count.unwrap(), &args);
+            let parsed_words = wordlist_parser::parse(app.locate_wordlist(&args[1]), &count.unwrap(), &args);
 
             if let Err(err) = parsed_words {
                 println!(
                     "\"{}\" is not a valid wordlist: {}",
-                    &args[2],
+                    &args[1],
                     err.to_string()
                 );
 
                 std::process::exit(1);
             }
-            words = parsed_words.unwrap();
-        }
 
-        _ => {
-            usage(&args);
-            std::process::exit(1);
+            words = parsed_words.unwrap();
         }
     }
 
