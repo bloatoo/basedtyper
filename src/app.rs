@@ -71,4 +71,14 @@ impl App {
 
         path
     }
+
+    pub fn decrement_index(&mut self) {
+        if self.current_index - 1 > 0 {
+            self.current_index -= 1;
+        }
+    }
+
+    pub fn increment_index(&mut self) {
+        self.current_index += 1;
+    }
 }

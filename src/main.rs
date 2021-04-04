@@ -1,7 +1,6 @@
 use basedtyper::{
     event::*,
     app::{App, State},
-    utils::usage,
     parser,
 };
 
@@ -12,12 +11,6 @@ use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Dir
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = App::default();
-
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() < 2 {
-        usage(&args);
-    }
 
     let stdout = io::stdout().into_raw_mode()?;
     let backend = TermionBackend::new(stdout);
@@ -37,9 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let mut word_string = word_string.trim_end();
 
-
         let words_split = word_string.split("").collect::<Vec<&str>>();
-
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -55,7 +46,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let word_string = re.replace_all(word_string, " ");
         let word_string = word_string.trim();
-    
 
         terminal.draw(|f| {
             let mut to_be_rendered_str: Vec<Span> = vec![];
@@ -67,12 +57,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     for _ in 0..chunks[0].height / 2 - 2 {
                         spans.push(Spans::default());
                     }
+                    spans.push(Spans::from(Span::styled("basedtyper", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD))));
+                    spans.push(Spans::from(Span::raw("")));
 
-                    spans.append(&mut vec![
-                        Spans::from(Span::styled("basedtyper", Style::default().fg(Color::Green))),
-                        Spans::from(Span::raw("")),
-                        Spans::from(Span::raw("t to start typing game")),
-                    ]);
+                    let menu = vec![
+                        String::from(" wordlist "),
+                        String::from("  quotes  ")
+                    ];
+
+                    for (index, elem) in menu.iter().enumerate() {
+                        if app.current_index - 1 == index {
+                            spans.push(Spans::from(Span::styled(elem, Style::default().fg(Color::Green))));
+                        } else {
+                            spans.push(Spans::from(Span::raw(elem)));
+                        }
+                    }
 
                     for _ in 0..chunks[0].height / 3 {
                         spans.push(Spans::default());
@@ -216,10 +215,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                         State::MainMenu => {
                             match c {
-                                't' => {
+                                '\n' => {
+                                    match app.current_index {
+                                        1 => {
+
+                                        }
+
+                                        2 => {
+                                            parser::parse_words(&["".to_string(), "quote".to_string()], &mut app).unwrap();
+                                        }
+
+                                        _ => ()
+                                    }
+
+                                    app.restart(State::TypingGame);
+                                }
+
+                                /*'t' => {
                                     parser::parse_words(&args, &mut app).unwrap();
                                     app.state = State::TypingGame;
-                                }
+                                }*/
 
                                 _ => ()
                             }
@@ -243,12 +258,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
 
+                Key::Up => {
+                    match app.state {
+                        State::MainMenu => {
+                            if app.current_index + 1 > 2  {
+                                app.decrement_index()
+                            }
+                        }
+                        _ => ()
+                    }
+                }
+
+                Key::Down => {
+                    match app.state {
+                        State::MainMenu => {
+                            app.increment_index()
+                        }
+
+                        _ => ()
+                    }
+                }
+
                 Key::Ctrl(c) => {
                     match app.state {
                         State::TypingGame => {
                             match c {
                                 'r' => {
                                     app.restart(State::TypingGame);
+                                }
+
+                                'c' => {
+                                    app.restart(State::MainMenu);
                                 }
 
                                 _ => ()
@@ -263,7 +303,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 Key::Backspace => {
                     if app.current_index - 1 > 0 {
-                        app.current_index -= 1;
+                        app.decrement_index();
                         app.input_string.pop();
                     }
                 }
