@@ -1,16 +1,13 @@
-mod event;
-mod word;
-mod wordlist_parser;
-mod app;
-
-use app::{App, State};
+use basedtyper::{
+    event::*,
+    word::Word,
+    app::{App, State},
+    wordlist_parser,
+};
 
 use std::{cmp::Ordering, env, io};
 
 use rand::Rng;
-
-use event::*;
-use word::Word;
 
 use serde_json::Value;
 use termion::{event::Key, raw::IntoRawMode};
@@ -67,7 +64,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::process::exit(1);
             }
 
-            let parsed_words = wordlist_parser::parse(&args[2], &count.unwrap(), &args);
+            let parsed_words = wordlist_parser::parse(app.locate_wordlist(&args[2]), &count.unwrap(), &args);
 
             if let Err(err) = parsed_words {
                 println!(
@@ -80,6 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             words = parsed_words.unwrap();
         }
+
         _ => {
             usage(&args);
             std::process::exit(1);
@@ -141,6 +139,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Spans::from(Span::raw("t to start typing game")),
                     ]);
 
+                    for _ in 0..chunks[0].height / 3 {
+                        spans.push(Spans::default());
+                    }
+
+                    spans.push(Spans::from(Span::raw(format!("wordlist directory: {}", &app.config.wordlist_directory))));
+
                     f.render_widget(Paragraph::new(spans).alignment(Alignment::Center), chunks[0]);
                 }
 
@@ -186,7 +190,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if app.input_string.split("").nth(index).is_some() {
                             match index.cmp(&app.current_index) {
                                 Ordering::Less => {
-                                    if app.input_string.split("").collect::<Vec<&str>>()[index] != words_split[index] && word_string[..app.input_string.len() - 1] != app.input_string {
+                                    if app.input_string.split("").collect::<Vec<&str>>()[index] != words_split[index] && word_string[..app.input_string.len() - 1].trim() != app.input_string.trim() {
                                         to_be_rendered_str.push(Span::styled(c, Style::default().bg(Color::Red)));
 
                                     } else {

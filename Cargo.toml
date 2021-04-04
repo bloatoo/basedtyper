@@ -16,3 +16,5 @@ ureq = "2.1.0"
 serde_json = "1.0.64"
 rand = "0.8"
 regex = "1.4.5"
+toml = "0.5.3"
+serde = { features = ["derive"], version = "1.0.117" }
