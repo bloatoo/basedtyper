@@ -21,9 +21,8 @@ fn usage(args: &[String]) {
         "basedtyper
 
         \rusage:\n \
-        \r ({arg} random <word count>           (DISABLED) fetches random words and their definitions from APIs
-        \r {arg} wordlist <path to wordlist>    uses a local file as a wordlist
-        \r {arg} quote                          fetches a random post from r/copypasta (UNSTABLE)
+        \r {arg} random <path to wordlist> <count> | fetches words and their definitions from a wordlist in a random order
+        \r {arg} quote                             | fetches a random post from r/copypasta (UNSTABLE)
         
         \roptions:\n \
         \r --no-defs                       disable definitions for words
@@ -46,47 +45,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut words: Vec<Word> = Vec::new();
 
     match &args[1][..] {
-        /*"random" => {
-            if args.len() < 3 { usage(&args); }
-            let mut word_count = env::args().collect::<Vec<String>>()[2].parse::<u32>();
-
-            if word_count.is_err() {
-                word_count = Ok(10)
-            }
-
-            let res = ureq::get(
-                &format!(
-                    "https://random-word-api.herokuapp.com/word?number={}",
-                    word_count.unwrap()
-                )[..],
-            ).call()?.into_string()?;
-
-            let local_words: Vec<&str> = serde_json::from_str(&res).unwrap();
-
-            if args.iter().find(|val| val == &&String::from("--no-defs")).is_none() {
-                for word in local_words {
-                    let other_res = ureq::get( 
-                            &format!(
-                                "https://api.dictionaryapi.dev/api/v2/entries/en_US/{}",
-                                word
-                            )[..]
-                        ).call();
-
-                    if other_res.is_err() {
-                        words.push(Word::new(word, "No definitions found\n"));
-                    } else {
-                        let json: Value = serde_json::from_str(&other_res.unwrap().into_string()?[..]).unwrap();
-                        let value = json[0]["meanings"][0]["definitions"][0]["definition"].as_str();
-                        words.push(Word::new(word, value.unwrap()));
-                    }
-                }
-            } else {
-                for word in local_words {
-                    words.push(Word::new(word, ""));
-                }
-            }
-        }*/
-
         "quote" => {
             let other_res = ureq::get("https://www.reddit.com/r/copypasta/top/.json?sort=top&t=week&showmedia=false&mediaonly=false&is_self=true&limit=100")
                 .call()?.into_string()?;
@@ -100,9 +58,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        "wordlist" => {
-            if args.len() < 3 { usage(&args); }
-            let parsed_words = wordlist_parser::parse(&args[2], &args);
+        "random" => {
+            if args.len() < 4 { usage(&args); }
+            let count = args[3].parse::<u32>();
+
+            if count.is_err() {
+                usage(&args);
+                std::process::exit(1);
+            }
+
+            let parsed_words = wordlist_parser::parse(&args[2], &count.unwrap(), &args);
 
             if let Err(err) = parsed_words {
                 println!(
@@ -113,10 +78,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 std::process::exit(1);
             }
-
             words = parsed_words.unwrap();
         }
-
         _ => {
             usage(&args);
             std::process::exit(1);
@@ -143,12 +106,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(10)
+        .margin(5)
         .constraints([Constraint::Percentage(100)])
         .split(terminal.size().unwrap());
 
     if word_string.len() as u16 > chunks[0].width {
-        word_string = &word_string[..rand::thread_rng().gen_range(11..chunks[0].width - 2) as usize];
+        word_string = &word_string[..chunks[0].width as usize - 2];
     }
 
     let re = regex::Regex::new("^\t\r\n\x20-\x7E]+").unwrap();

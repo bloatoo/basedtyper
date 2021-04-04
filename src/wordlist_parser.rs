@@ -1,7 +1,8 @@
 use std::{fs, io, path::Path};
 use super::word::Word;
+use rand::Rng;
 
-pub fn parse<T: AsRef<Path>>(path: T, args: &[String]) -> Result<Vec<Word>, io::Error> {
+pub fn parse<T: AsRef<Path>>(path: T, count: &u32, args: &[String]) -> Result<Vec<Word>, io::Error> {
     let file = fs::read_to_string(path);
 
     if let Err(err) = file {
@@ -13,8 +14,13 @@ pub fn parse<T: AsRef<Path>>(path: T, args: &[String]) -> Result<Vec<Word>, io::
 
         let mut words: Vec<Word> = vec![];
 
-        chunks.iter().for_each(|chunk| {
-            let word: Vec<&str> = chunk.split('\n').collect();
+        for _ in if *count > chunks.len() as u32 {
+            0..chunks.len() as u32
+        } else { 
+            0..*count
+        } {
+            let rand = rand::thread_rng().gen_range(0..chunks.len());
+            let word: Vec<&str> = chunks[rand].split('\n').collect();
 
             if !word[0].starts_with("#") {
                 if args.iter().any(|arg| arg == &String::from("--no-defs")) {
@@ -23,7 +29,7 @@ pub fn parse<T: AsRef<Path>>(path: T, args: &[String]) -> Result<Vec<Word>, io::
                     words.push(Word::new(word[0], word[1]));
                 }
             }
-        });
+        }
 
         Ok(words)
     }
