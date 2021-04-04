@@ -1,34 +1,14 @@
 use basedtyper::{
     event::*,
-    word::Word,
     app::{App, State},
-    wordlist_parser,
+    utils::usage,
+    parser,
 };
 
 use std::{cmp::Ordering, env, io};
 
-use rand::Rng;
-
-use serde_json::Value;
 use termion::{event::Key, raw::IntoRawMode};
 use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans, Text}, widgets::Paragraph};
-
-fn usage(args: &[String]) {
-    println!(
-        "basedtyper
-
-        \rusage:\n \
-        \r {arg} <path to wordlist> <count>        | fetches words and their definitions from a wordlist in a random order
-        \r {arg} quote                             | fetches a random post from r/copypasta (UNSTABLE)
-        
-        \roptions:\n \
-        \r --no-defs                       disable definitions for words
-        ",
-        arg = &args[0]
-    );
-
-    std::process::exit(0);
-}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = App::default();
@@ -39,85 +19,44 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         usage(&args);
     }
 
-    let mut words: Vec<Word> = Vec::new();
-
-    match &args[1][..] {
-        "quote" => {
-            let other_res = ureq::get("https://www.reddit.com/r/copypasta/top/.json?sort=top&t=week&showmedia=false&mediaonly=false&is_self=true&limit=100")
-                .call()?.into_string()?;
-
-            let json: Value = serde_json::from_str(&other_res[..]).unwrap();
-
-            let quote = json["data"]["children"][rand::thread_rng().gen_range(0..100) as usize]["data"]["selftext"].as_str().unwrap();
-            
-            for word in quote.split(" ") {
-                words.push(Word::new(word, ""));
-            }
-        }
-
-        _ => {
-            if args.len() < 3 { usage(&args); }
-            let count = args[2].parse::<u32>();
-
-            if count.is_err() {
-                usage(&args);
-                std::process::exit(1);
-            }
-
-            let parsed_words = wordlist_parser::parse(app.locate_wordlist(&args[1]), &count.unwrap(), &args);
-
-            if let Err(err) = parsed_words {
-                println!(
-                    "\"{}\" is not a valid wordlist: {}",
-                    &args[1],
-                    err.to_string()
-                );
-
-                std::process::exit(1);
-            }
-
-            words = parsed_words.unwrap();
-        }
-    }
-
     let stdout = io::stdout().into_raw_mode()?;
     let backend = TermionBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-
-    let words_vec = words
-        .iter()
-        .map(|elem| elem.get_word().into())
-        .collect::<Vec<String>>();
-
-    let word_string = words_vec.join(" ");
-
-    let mut word_string = word_string.trim_end();
-
     let events = Events::new();
-
-    let words_split = word_string.split("").collect::<Vec<&str>>();
-
-
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(5)
-        .constraints([Constraint::Percentage(100)])
-        .split(terminal.size().unwrap());
-
-    if word_string.len() as u16 > chunks[0].width {
-        word_string = &word_string[..chunks[0].width as usize - 2];
-    }
-
-    let re = regex::Regex::new("^\t\r\n\x20-\x7E]+").unwrap();
-
-    let word_string = re.replace_all(word_string, " ");
-    let word_string = word_string.trim();
-
 
     print!("{}", termion::clear::All);
     print!("{}", termion::cursor::SteadyBar);
 
     loop {
+        let words_vec = app.words
+            .iter()
+            .map(|elem| elem.get_word().into())
+            .collect::<Vec<String>>();
+
+        let word_string = words_vec.join(" ");
+
+        let mut word_string = word_string.trim_end();
+
+
+        let words_split = word_string.split("").collect::<Vec<&str>>();
+
+
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(5)
+            .constraints([Constraint::Percentage(100)])
+            .split(terminal.size().unwrap());
+
+        if word_string.len() as u16 > chunks[0].width {
+            word_string = &word_string[..chunks[0].width as usize - 2];
+        }
+    
+        let re = regex::Regex::new("^\t\r\n\x20-\x7E]+").unwrap();
+
+        let word_string = re.replace_all(word_string, " ");
+        let word_string = word_string.trim();
+    
+
         terminal.draw(|f| {
             let mut to_be_rendered_str: Vec<Span> = vec![];
             
@@ -209,7 +148,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         / (if app.timer.is_some() { (app.timer.unwrap().elapsed().as_millis() as f64 / 1000_f64) / 60_f64 } else { 0_f64 });
 
                     let defs: Vec<&String> =
-                        words.iter().map(|elem| elem.get_definition()).collect();
+                        app.words.iter().map(|elem| elem.get_definition()).collect();
 
                     f.render_widget(
                         Paragraph::new(Text::from(format!("WPM: {:.2}", wpm)))
@@ -278,6 +217,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         State::MainMenu => {
                             match c {
                                 't' => {
+                                    parser::parse_words(&args, &mut app).unwrap();
                                     app.state = State::TypingGame;
                                 }
 
@@ -310,6 +250,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 'r' => {
                                     app.restart(State::TypingGame);
                                 }
+
                                 _ => ()
                             }
                         }

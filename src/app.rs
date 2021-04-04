@@ -1,4 +1,4 @@
-use super::config::Config;
+use super::{config::Config, parser::Word};
 use std::{path::Path, time::Instant};
 
 pub struct App {
@@ -9,6 +9,7 @@ pub struct App {
     pub timer: Option<Instant>,
     pub current_index: usize,
     pub current_error: String,
+    pub words: Vec<Word>,
 }
 
 pub enum State {
@@ -36,6 +37,7 @@ impl App {
             current_index: 1,
             config,
             current_error: err,
+            words: Vec::new(),
         }
     }
 
@@ -51,7 +53,7 @@ impl App {
         self.timer = Some(Instant::now());
     }
 
-    pub fn locate_wordlist(&mut self, wordlist_name: &str) -> String {
+    pub fn locate_wordlist(&self, wordlist_name: &str) -> String {
         let wordlist_name = if wordlist_name.ends_with(".basedtyper") {
             wordlist_name.to_string()
         } else {
