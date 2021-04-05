@@ -1,7 +1,8 @@
 use super::app::App;
+use io::Write;
 use rand::Rng;
 use serde_json::Value;
-use std::{fs, io, path::Path};
+use std::{fs::{self, OpenOptions}, io, path::Path};
 
 pub struct Word {
     word: String,
@@ -42,23 +43,40 @@ pub fn parse_words(mode: &str, app: &mut App) -> Result<(), Box<dyn std::error::
             for word in quote.split(" ") {
                 app.words.push(Word::new(word, ""));
             }
+
+            if app.config.cache_quotes {
+                let home_dir = std::env::var("HOME").unwrap();
+
+                let words_vec = app.words
+                    .iter()
+                    .map(|elem| elem.get_word().into())
+                    .collect::<Vec<String>>();
+
+                let word_string = words_vec.join(" ");
+
+
+                /*if !Path::new(&format!("{}/.cache/basedtyper.cached_quotes", home_dir)).is_file() {
+                    std::fs::File::create(format!("{}/.cache/basedtyper.cached_quotes", home_dir)).unwrap();
+                }*/
+
+                let mut file = OpenOptions::new()
+                    .append(true)
+                    .create(true)
+                    .open(format!("{}/.cache/basedtyper.cached_quotes", home_dir))
+                    .unwrap();
+
+                file.write((word_string + "\n\n").as_bytes()).unwrap();
+            }
+
             Ok(())
         }
 
         _ => {
             let parsed_words = parse_wordlist(app.locate_wordlist(&app.wordlist.1), &10, &app);
 
-            /*if let Err(_err) = parsed_words {
-                println!(
-                    "\"{}\" is not a valid wordlist: {}",
-                    &app.wordlist.1,
-                    err.to_string()
-                );
-
-                std::process::exit(1);
-            } else {*/
             if parsed_words.is_ok() {
                 app.words = parsed_words.unwrap();
+                
                 return Ok(());
             }
 
@@ -88,7 +106,7 @@ pub fn parse_wordlist<T: AsRef<Path>>(path: T, count: &u32, app: &App) -> Result
             let word: Vec<&str> = chunks[rand].split('\n').collect();
 
             if !word[0].starts_with("#") {
-                if app.config.definitions == false {
+                if !app.config.definitions {
                     words.push(Word::new(word[0], ""));
                 } else {
                     words.push(Word::new(word[0], word[1]));

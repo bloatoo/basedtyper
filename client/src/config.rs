@@ -6,6 +6,7 @@ use serde::Deserialize;
 pub struct Config {
     pub wordlist_directory: String,
     pub definitions: bool,
+    pub cache_quotes: bool,
 }
 
 impl Config {
@@ -29,6 +30,7 @@ impl Config {
         Ok(Self {
             wordlist_directory: data.wordlist_directory,
             definitions: data.definitions,
+            cache_quotes: data.cache_quotes,
         })
     }
 
@@ -44,6 +46,7 @@ impl Config {
         Self {
             wordlist_directory: default_path + "/wordlists",
             definitions: true,
+            cache_quotes: false,
         }
     }
 

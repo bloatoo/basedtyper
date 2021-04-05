@@ -2,3 +2,4 @@
 
 wordlist_directory = "/home/user/.config/basedtyper/wordlists/"
 definitions = true
+cache_quotes = true

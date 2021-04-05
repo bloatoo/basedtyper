@@ -57,7 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     for _ in 0..chunks[0].height / 2 - 2 {
                         spans.push(Spans::default());
                     }
-                    spans.push(Spans::from(Span::styled("basedtyper", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD))));
+                    //spans.push(Spans::from(Span::styled("basedtyper", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD))));
                     spans.push(Spans::from(Span::raw("")));
 
                     let menu = vec![
@@ -72,6 +72,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             spans.push(Spans::from(Span::raw(elem)));
                         }
                     }
+
+                    spans[chunks[0].height as usize / 2 - 5] = Spans::from(Span::styled("basedtyper", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)));
 
                     for _ in 0..(chunks[0].height / 3) / 2 {
                         spans.push(Spans::default());
