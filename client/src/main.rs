@@ -3,14 +3,35 @@ use basedtyper::{
     app::{App, State},
     parser,
 };
+//use mpsc::{Receiver, Sender, self};
 
-use std::{cmp::Ordering, io};
+use std::{/*net::TcpStream,*/ cmp::Ordering, io};//{self, Read, Write}};
+//use std::thread;
 
 use termion::{event::Key, raw::IntoRawMode};
 use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans, Text}, widgets::Paragraph};
 
+/*fn handle_connection(mut stream: TcpStream, sender: Sender<String>) {
+    loop {
+        let mut buf = vec![0 as u8; 1024];
+
+        if stream.read(&mut buf).is_err() {
+             println!("failed");
+        }
+
+        buf.retain(|byte| byte != &u8::MIN);
+        let data = String::from_utf8(buf).unwrap();
+
+        if data.len() > 0 {
+            sender.send(data).unwrap();
+        }
+    }
+}*/
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = App::default();
+
+    //let (sender, receiver): (Sender<String>, Receiver<String>) = mpsc::channel();
 
     let stdout = io::stdout().into_raw_mode()?;
     let backend = TermionBackend::new(stdout);
@@ -25,6 +46,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .iter()
             .map(|elem| elem.get_word().into())
             .collect::<Vec<String>>();
+
+        /*if let Ok(val) = receiver.try_recv() {
+            println!("{}", val);
+            std::process::exit(0);
+        }*/
 
         let word_string = words_vec.join(" ");
 
@@ -57,7 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     for _ in 0..chunks[0].height / 2 - 2 {
                         spans.push(Spans::default());
                     }
-                    //spans.push(Spans::from(Span::styled("basedtyper", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD))));
+
                     spans.push(Spans::from(Span::raw("")));
 
                     let menu = vec![
@@ -244,6 +270,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         2 => {
                                             parser::parse_words("quote", &mut app).unwrap();
                                             app.restart(State::TypingGame);
+
+                                            /*let mut stream = TcpStream::connect("localhost:1337").unwrap();
+                                            stream.write(b"{ \"username\": \"bloatoo\" }").unwrap();
+                                            let sender = sender.clone();
+
+                                            thread::spawn(move || handle_connection(stream, sender));*/
+                                            //testing
                                         }
 
                                         _ => ()
