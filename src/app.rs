@@ -10,6 +10,7 @@ pub struct App {
     pub current_index: usize,
     pub current_error: String,
     pub words: Vec<Word>,
+    pub wordlist: (bool, String),
 }
 
 pub enum State {
@@ -38,6 +39,7 @@ impl App {
             config,
             current_error: err,
             words: Vec::new(),
+            wordlist: (false, String::new()),
         }
     }
 

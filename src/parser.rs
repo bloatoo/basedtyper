@@ -1,4 +1,4 @@
-use super::{app::App, utils::usage};
+use super::app::App;
 use rand::Rng;
 use serde_json::Value;
 use std::{fs, io, path::Path};
@@ -28,9 +28,9 @@ impl Word {
     }
 }
 
-pub fn parse_words(args: &[String], app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
+pub fn parse_words(mode: &str, app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     app.words = Vec::new();
-    match &args[1][..] {
+    match mode {
         "quote" => {
             let other_res = ureq::get("https://www.reddit.com/r/copypasta/top/.json?sort=top&t=week&showmedia=false&mediaonly=false&is_self=true&limit=100")
                 .call()?.into_string()?;
@@ -46,33 +46,28 @@ pub fn parse_words(args: &[String], app: &mut App) -> Result<(), Box<dyn std::er
         }
 
         _ => {
-            if args.len() < 3 { usage(&args); }
-            let count = args[2].parse::<u32>();
+            let parsed_words = parse_wordlist(app.locate_wordlist(&app.wordlist.1), &10, &app);
 
-            if count.is_err() {
-                usage(&args);
-                std::process::exit(1);
-            }
-
-            let parsed_words = parse_wordlist(app.locate_wordlist(&args[1]), &count.unwrap(), &args);
-
-            if let Err(err) = parsed_words {
+            /*if let Err(_err) = parsed_words {
                 println!(
                     "\"{}\" is not a valid wordlist: {}",
-                    &args[1],
+                    &app.wordlist.1,
                     err.to_string()
                 );
 
                 std::process::exit(1);
+            } else {*/
+            if parsed_words.is_ok() {
+                app.words = parsed_words.unwrap();
+                return Ok(());
             }
 
-            app.words = parsed_words.unwrap();
-            Ok(())
+            Err(Box::new(parsed_words.err().unwrap()))
         }
     }
 }
 
-pub fn parse_wordlist<T: AsRef<Path>>(path: T, count: &u32, args: &[String]) -> Result<Vec<Word>, io::Error> {
+pub fn parse_wordlist<T: AsRef<Path>>(path: T, count: &u32, app: &App) -> Result<Vec<Word>, io::Error> {
     let file = fs::read_to_string(path);
 
     if let Err(err) = file {
@@ -93,7 +88,7 @@ pub fn parse_wordlist<T: AsRef<Path>>(path: T, count: &u32, args: &[String]) -> 
             let word: Vec<&str> = chunks[rand].split('\n').collect();
 
             if !word[0].starts_with("#") {
-                if args.iter().any(|arg| arg == &String::from("--no-defs")) {
+                if app.config.definitions == false {
                     words.push(Word::new(word[0], ""));
                 } else {
                     words.push(Word::new(word[0], word[1]));

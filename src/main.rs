@@ -4,7 +4,7 @@ use basedtyper::{
     parser,
 };
 
-use std::{cmp::Ordering, env, io};
+use std::{cmp::Ordering, io};
 
 use termion::{event::Key, raw::IntoRawMode};
 use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans, Text}, widgets::Paragraph};
@@ -61,8 +61,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     spans.push(Spans::from(Span::raw("")));
 
                     let menu = vec![
-                        String::from(" wordlist "),
-                        String::from("  quotes  ")
+                        String::from("     wordlist     "),
+                        String::from(" quote (UNSTABLE) ")
                     ];
 
                     for (index, elem) in menu.iter().enumerate() {
@@ -73,7 +73,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
 
-                    for _ in 0..chunks[0].height / 3 {
+                    for _ in 0..(chunks[0].height / 3) / 2 {
+                        spans.push(Spans::default());
+                    }
+
+                    if app.wordlist.0 {
+                        spans.push(Spans::from(Span::raw(format!("wordlist name: {}", app.wordlist.1))));
+                    }
+
+                    for _ in 0..(chunks[0].height / 3) / 2 {
                         spans.push(Spans::default());
                     }
 
@@ -124,9 +132,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if app.input_string.split("").nth(index).is_some() {
                             match index.cmp(&app.current_index) {
                                 Ordering::Less => {
-                                    if app.input_string.split("").collect::<Vec<&str>>()[index] != words_split[index] && word_string[..app.input_string.len() - 1].trim() != app.input_string.trim() {
+                                    if app.input_string.split("").collect::<Vec<&str>>()[index]!= words_split[index] 
+                                        && word_string[..app.input_string.len() - 1].trim_start() != app.input_string.trim_start() 
+                                    {
                                         to_be_rendered_str.push(Span::styled(c, Style::default().bg(Color::Red)));
-
                                     } else {
                                         to_be_rendered_str.push(Span::styled(
                                             c,
@@ -218,25 +227,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 '\n' => {
                                     match app.current_index {
                                         1 => {
+                                            if app.wordlist.0 {
+                                                let parsed = parser::parse_words("wordlist", &mut app);
 
+                                                if parsed.is_ok() {
+                                                    app.restart(State::TypingGame);
+                                                    app.wordlist = (false, String::new());
+                                                }
+                                            } else {
+                                                app.wordlist.0 = true;
+                                            }
                                         }
 
                                         2 => {
-                                            parser::parse_words(&["".to_string(), "quote".to_string()], &mut app).unwrap();
+                                            parser::parse_words("quote", &mut app).unwrap();
+                                            app.restart(State::TypingGame);
                                         }
 
                                         _ => ()
                                     }
 
-                                    app.restart(State::TypingGame);
                                 }
 
-                                /*'t' => {
-                                    parser::parse_words(&args, &mut app).unwrap();
-                                    app.state = State::TypingGame;
-                                }*/
-
-                                _ => ()
+                                _ => {
+                                    if app.wordlist.0 {
+                                        app.wordlist.1.push(c);
+                                    }
+                                }
                             }
                         }
 
@@ -302,9 +319,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Key::Esc => break,
 
                 Key::Backspace => {
-                    if app.current_index - 1 > 0 {
-                        app.decrement_index();
-                        app.input_string.pop();
+                    match app.state {
+                        State::TypingGame => {
+                            if app.current_index - 1 > 0 {
+                                app.decrement_index();
+                                app.input_string.pop();
+                            }
+                        }
+
+                        State::MainMenu => {
+                            app.wordlist.1.pop();
+                        }
+
+                        _ => ()
                     }
                 }
 

@@ -5,6 +5,7 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 pub struct Config {
     pub wordlist_directory: String,
+    pub definitions: bool,
 }
 
 impl Config {
@@ -17,10 +18,17 @@ impl Config {
             return Err(err);
         }
 
-        let data: Config = toml::from_str(&file_contents.unwrap()).unwrap();
+        let data: Result<Self, _> = toml::from_str(&file_contents.unwrap());
+
+        if let Err(_err) = data {
+            return Ok(Config::default());
+        }
+
+        let data = data.unwrap();
 
         Ok(Self {
             wordlist_directory: data.wordlist_directory,
+            definitions: data.definitions,
         })
     }
 
@@ -34,7 +42,8 @@ impl Config {
         }
 
         Self {
-            wordlist_directory: default_path + "/wordlists" 
+            wordlist_directory: default_path + "/wordlists",
+            definitions: true,
         }
     }
 

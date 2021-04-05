@@ -1,3 +1,4 @@
 # place this file in ~/.config/basedtyper/config.toml
 
 wordlist_directory = "/home/user/.config/basedtyper/wordlists/"
+definitions = true
