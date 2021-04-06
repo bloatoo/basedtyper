@@ -3,15 +3,17 @@ use basedtyper::{
     app::{App, State},
     parser,
 };
-//use mpsc::{Receiver, Sender, self};
+use parser::Word;
+use std::sync::mpsc::{Receiver, Sender, self};
+use serde_json::{json, Value};
 
-use std::{/*net::TcpStream,*/ cmp::Ordering, io};//{self, Read, Write}};
-//use std::thread;
+use std::{net::TcpStream, cmp::Ordering, io::{self, Read, Write}};
+use std::thread;
 
 use termion::{event::Key, raw::IntoRawMode};
 use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans, Text}, widgets::Paragraph};
 
-/*fn handle_connection(mut stream: TcpStream, sender: Sender<String>) {
+fn handle_connection(mut stream: TcpStream, sender: Sender<String>) {
     loop {
         let mut buf = vec![0 as u8; 1024];
 
@@ -24,14 +26,16 @@ use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Dir
 
         if data.len() > 0 {
             sender.send(data).unwrap();
+            break;
         }
     }
-}*/
+    drop(stream);
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = App::default();
 
-    //let (sender, receiver): (Sender<String>, Receiver<String>) = mpsc::channel();
+    let (sender, receiver): (Sender<String>, Receiver<String>) = mpsc::channel();
 
     let stdout = io::stdout().into_raw_mode()?;
     let backend = TermionBackend::new(stdout);
@@ -47,16 +51,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .map(|elem| elem.get_word().into())
             .collect::<Vec<String>>();
 
-        /*if let Ok(val) = receiver.try_recv() {
-            println!("{}", val);
-            std::process::exit(0);
-        }*/
+        let mut word_string = words_vec.join(" ");
 
-        let word_string = words_vec.join(" ");
+        if let Ok(val) = receiver.try_recv() {
+            let json: Value = serde_json::from_str(&val).unwrap();
+            match &json["call"].as_str().unwrap() {
+                &"words" => {
+                    let words_vec = json["data"]["words"]
+                        .as_str()
+                        .unwrap()
+                        .split(' ')
+                        .collect::<Vec<&str>>();
+
+                    app.words = words_vec
+                        .iter()
+                        .map(|word| Word::new(word, &""))
+                        .collect::<Vec<Word>>();
+
+                    word_string = words_vec.join(" ").trim_end().to_string();
+
+                    app.restart(State::TypingGame);
+                }
+                
+                _ => ()
+            }
+        }
+
 
         let mut word_string = word_string.trim_end();
-
-        let words_split = word_string.split("").collect::<Vec<&str>>();
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -87,8 +109,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     spans.push(Spans::from(Span::raw("")));
 
                     let menu = vec![
-                        String::from("     wordlist     "),
-                        String::from(" quote (UNSTABLE) ")
+                        String::from("           wordlist          "),
+                        String::from(" multiplayer (VERY UNSTABLE) "),
+                        String::from("       quote (UNSTABLE)      ")
                     ];
 
                     for (index, elem) in menu.iter().enumerate() {
@@ -109,8 +132,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         spans.push(Spans::from(Span::raw(format!("wordlist name: {}", app.wordlist.1))));
                     }
 
+                    if app.host.0 {
+                        spans.push(Spans::from(Span::raw(format!("host ip and port: {}", app.host.1))));
+                    }
+
                     for _ in 0..(chunks[0].height / 3) / 2 {
                         spans.push(Spans::default());
+                    }
+
+                    if !app.current_error.is_empty() {
+                        spans[chunks[0].height as usize / 2 + chunks[0].height as usize / 3] = Spans::from(Span::styled(&app.current_error, Style::default().fg(Color::Red)));
                     }
 
                     spans.push(Spans::from(Span::raw(format!("wordlist directory: {}", &app.config.wordlist_directory))));
@@ -160,9 +191,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if app.input_string.split("").nth(index).is_some() {
                             match index.cmp(&app.current_index) {
                                 Ordering::Less => {
-                                    if app.input_string.split("").collect::<Vec<&str>>()[index]!= words_split[index] 
-                                        && word_string[..app.input_string.len() - 1].trim_start() != app.input_string.trim_start() 
-                                    {
+                                    if app.input_string.split("").nth(index).unwrap() != word_string.split("").nth(index).unwrap() {
                                         to_be_rendered_str.push(Span::styled(c, Style::default().bg(Color::Red)));
                                     } else {
                                         to_be_rendered_str.push(Span::styled(
@@ -268,15 +297,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         }
 
                                         2 => {
+                                            if !app.host.0 {
+                                                app.host.0 = true;
+                                            } else {
+                                                let stream = TcpStream::connect(&app.host.1);
+
+                                                if let Err(err) = stream {
+                                                    app.current_error = err.to_string();
+                                                } else {
+                                                    let mut stream = stream.unwrap();
+                                                    let username = "bloatoo";
+    
+                                                    let json: Value = json!({
+                                                    "call": "init",
+                                                        "data": {
+                                                            "username": username,
+                                                        }
+                                                    });
+        
+                                                    let data = serde_json::to_string(&json).unwrap();
+        
+                                                    stream.write(data.as_bytes()).unwrap();
+                                                    let sender = sender.clone();
+        
+                                                    thread::spawn(move || handle_connection(stream, sender));
+                                                }
+                                            }
+                                        }
+
+                                        3 => {
                                             parser::parse_words("quote", &mut app).unwrap();
                                             app.restart(State::TypingGame);
-
-                                            /*let mut stream = TcpStream::connect("localhost:1337").unwrap();
-                                            stream.write(b"{ \"username\": \"bloatoo\" }").unwrap();
-                                            let sender = sender.clone();
-
-                                            thread::spawn(move || handle_connection(stream, sender));*/
-                                            //testing
                                         }
 
                                         _ => ()
@@ -287,6 +338,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 _ => {
                                     if app.wordlist.0 {
                                         app.wordlist.1.push(c);
+                                    } else if app.host.0 {
+                                        app.host.1.push(c);
                                     }
                                 }
                             }
@@ -363,7 +416,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
 
                         State::MainMenu => {
-                            app.wordlist.1.pop();
+                            if app.wordlist.0 {
+                                app.wordlist.1.pop();
+                            } else if app.host.0 {
+                                app.host.1.pop();
+                            }
                         }
 
                         _ => ()

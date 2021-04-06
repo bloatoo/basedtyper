@@ -11,6 +11,7 @@ pub struct App {
     pub current_error: String,
     pub words: Vec<Word>,
     pub wordlist: (bool, String),
+    pub host: (bool, String),
 }
 
 pub enum State {
@@ -40,6 +41,7 @@ impl App {
             current_error: err,
             words: Vec::new(),
             wordlist: (false, String::new()),
+            host: (false, String::new()),
         }
     }
 
@@ -49,6 +51,9 @@ impl App {
         self.input_string = String::new();
         self.current_index = 1;
         self.time_taken = 0;
+        self.current_error = String::new();
+        self.wordlist = (false, String::new());
+        self.host = (false, String::new());
     }
 
     pub fn start_timer(&mut self) {
