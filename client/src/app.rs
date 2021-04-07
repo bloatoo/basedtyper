@@ -10,15 +10,14 @@ pub struct App {
     pub current_index: usize,
     pub current_error: String,
     pub words: Vec<Word>,
-    pub wordlist: (bool, String),
-    pub host: (bool, String),
 }
 
 pub enum State {
     MainMenu,
     EndScreen,
     TypingGame,
-    TermGame
+    WordlistPrompt,
+    HostPrompt,
 }
 
 impl App {
@@ -40,8 +39,6 @@ impl App {
             config,
             current_error: err,
             words: Vec::new(),
-            wordlist: (false, String::new()),
-            host: (false, String::new()),
         }
     }
 
@@ -52,8 +49,6 @@ impl App {
         self.current_index = 1;
         self.time_taken = 0;
         self.current_error = String::new();
-        self.wordlist = (false, String::new());
-        self.host = (false, String::new());
     }
 
     pub fn start_timer(&mut self) {

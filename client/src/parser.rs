@@ -1,8 +1,6 @@
-use super::app::App;
-use io::Write;
 use rand::Rng;
 use serde_json::Value;
-use std::{fs::{self, OpenOptions}, io, path::Path};
+use std::{fs, io, path::Path};
 
 pub struct Word {
     word: String,
@@ -29,8 +27,7 @@ impl Word {
     }
 }
 
-pub fn parse_words(mode: &str, app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
-    app.words = Vec::new();
+pub fn parse_words(mode: &str, wordlist_path: Option<String>) -> Result<Vec<Word>, Box<dyn std::error::Error>> {
     match mode {
         "quote" => {
             let other_res = ureq::get("https://www.reddit.com/r/copypasta/top/.json?sort=top&t=week&showmedia=false&mediaonly=false&is_self=true&limit=100")
@@ -38,13 +35,15 @@ pub fn parse_words(mode: &str, app: &mut App) -> Result<(), Box<dyn std::error::
 
             let json: Value = serde_json::from_str(&other_res[..]).unwrap();
 
+            let mut words = Vec::new();
+
             let quote = json["data"]["children"][rand::thread_rng().gen_range(0..100) as usize]["data"]["selftext"].as_str().unwrap();
             
             for word in quote.split(" ") {
-                app.words.push(Word::new(word, ""));
+                words.push(Word::new(word, ""));
             }
 
-            if app.config.cache_quotes {
+            /*if app.config.cache_quotes {
                 let home_dir = std::env::var("HOME").unwrap();
 
                 let words_vec = app.words
@@ -66,18 +65,16 @@ pub fn parse_words(mode: &str, app: &mut App) -> Result<(), Box<dyn std::error::
                     .unwrap();
 
                 file.write((word_string + "\n\n").as_bytes()).unwrap();
-            }
+            }*/
 
-            Ok(())
+            Ok(words)
         }
 
         _ => {
-            let parsed_words = parse_wordlist(app.locate_wordlist(&app.wordlist.1), &10, &app);
+            let parsed_words = parse_wordlist(wordlist_path.unwrap(), &10);
 
             if parsed_words.is_ok() {
-                app.words = parsed_words.unwrap();
-                
-                return Ok(());
+                return Ok(parsed_words.unwrap());
             }
 
             Err(Box::new(parsed_words.err().unwrap()))
@@ -85,7 +82,7 @@ pub fn parse_words(mode: &str, app: &mut App) -> Result<(), Box<dyn std::error::
     }
 }
 
-pub fn parse_wordlist<T: AsRef<Path>>(path: T, count: &u32, app: &App) -> Result<Vec<Word>, io::Error> {
+pub fn parse_wordlist<T: AsRef<Path>>(path: T, count: &u32) -> Result<Vec<Word>, io::Error> {
     let file = fs::read_to_string(path);
 
     if let Err(err) = file {
@@ -105,13 +102,7 @@ pub fn parse_wordlist<T: AsRef<Path>>(path: T, count: &u32, app: &App) -> Result
             let rand = rand::thread_rng().gen_range(0..chunks.len());
             let word: Vec<&str> = chunks[rand].split('\n').collect();
 
-            if !word[0].starts_with("#") {
-                if !app.config.definitions {
-                    words.push(Word::new(word[0], ""));
-                } else {
-                    words.push(Word::new(word[0], word[1]));
-                }
-            }
+            words.push(Word::new(word[0], ""));
         }
 
         Ok(words)

@@ -2,6 +2,7 @@ use basedtyper::{
     event::*,
     app::{App, State},
     parser,
+    ui,
 };
 use parser::Word;
 use std::sync::mpsc::{Receiver, Sender, self};
@@ -26,10 +27,8 @@ fn handle_connection(mut stream: TcpStream, sender: Sender<String>) {
 
         if data.len() > 0 {
             sender.send(data).unwrap();
-            break;
         }
     }
-    drop(stream);
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -77,14 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-
         let mut word_string = word_string.trim_end();
-
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .margin(5)
-            .constraints([Constraint::Percentage(100)])
-            .split(terminal.size().unwrap());
 
         if word_string.len() as u16 > chunks[0].width {
             word_string = &word_string[..chunks[0].width as usize - 2];
@@ -96,7 +88,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let word_string = word_string.trim();
 
         terminal.draw(|f| {
-            let mut to_be_rendered_str: Vec<Span> = vec![];
+            ui::draw(f);
+            /*let mut to_be_rendered_str: Vec<Span> = vec![];
             
             match app.state {
                 State::MainMenu => {
@@ -255,7 +248,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     );
                 }
             _ => (),
-            }
+            }*/
         })
         .unwrap();
 
