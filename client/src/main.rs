@@ -1,5 +1,5 @@
 use basedtyper::{
-    event::*,
+    event::{*, key::Key},
     app::{App, State},
     parser,
     ui,
@@ -11,8 +11,9 @@ use serde_json::{json, Value};
 use std::{net::TcpStream, cmp::Ordering, io::{self, Read, Write}};
 use std::thread;
 
-use termion::{event::Key, raw::IntoRawMode};
-use tui::{Terminal, backend::TermionBackend, layout::{Alignment, Constraint, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans, Text}, widgets::Paragraph};
+use crossterm::{ExecutableCommand, cursor::MoveTo, execute, terminal::{enable_raw_mode, disable_raw_mode, EnterAlternateScreen}};
+
+use tui::{Terminal, backend::CrosstermBackend, layout::{Alignment, Constraint, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans, Text}, widgets::Paragraph};
 
 fn handle_connection(mut stream: TcpStream, sender: Sender<String>) {
     loop {
@@ -36,13 +37,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (sender, receiver): (Sender<String>, Receiver<String>) = mpsc::channel();
 
-    let stdout = io::stdout().into_raw_mode()?;
-    let backend = TermionBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-    let events = Events::new();
+    enable_raw_mode()?;
 
-    print!("{}", termion::clear::All);
-    print!("{}", termion::cursor::SteadyBar);
+    let mut stdout = io::stdout();
+    stdout.execute(EnterAlternateScreen).unwrap();
+
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+    let events = Events::new(250);
+
+    terminal.clear().unwrap();
+
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(5)
+            .constraints([Constraint::Percentage(100)])
+            .split(terminal.size().unwrap());
+
 
     loop {
         let words_vec = app.words
@@ -51,6 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect::<Vec<String>>();
 
         let mut word_string = words_vec.join(" ");
+
 
         if let Ok(val) = receiver.try_recv() {
             let json: Value = serde_json::from_str(&val).unwrap();
@@ -88,8 +100,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let word_string = word_string.trim();
 
         terminal.draw(|f| {
-            ui::draw(f);
-            /*let mut to_be_rendered_str: Vec<Span> = vec![];
+            //ui::draw(f);
+            let mut to_be_rendered_str: Vec<Span> = vec![];
             
             match app.state {
                 State::MainMenu => {
@@ -121,13 +133,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         spans.push(Spans::default());
                     }
 
-                    if app.wordlist.0 {
+                    /*if app.wordlist.0 {
                         spans.push(Spans::from(Span::raw(format!("wordlist name: {}", app.wordlist.1))));
                     }
 
                     if app.host.0 {
                         spans.push(Spans::from(Span::raw(format!("host ip and port: {}", app.host.1))));
-                    }
+                    }*/
 
                     for _ in 0..(chunks[0].height / 3) / 2 {
                         spans.push(Spans::default());
@@ -246,9 +258,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             - to_be_rendered_str.len() as u16 / 2,
                         chunks[0].y + chunks[0].height / 2,
                     );
+
+                    /*stdout.execute(MoveTo(chunks[0].x + chunks[0].width / 2 + app.current_index as u16
+                            - to_be_rendered_str.len() as u16 / 2,
+                        chunks[0].y + chunks[0].height / 2,
+                    ));*/
                 }
             _ => (),
-            }*/
+            }
         })
         .unwrap();
 
@@ -271,14 +288,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 _ => (),
                             }
                         }
+                        State::TypingGame => {
+                            app.input_string.push(c);
+                            app.current_index += 1;
+                        }
+                        _ => (),
+                    }
+                } 
 
-                        State::MainMenu => {
-                            match c {
-                                '\n' => {
-                                    match app.current_index {
-                                        1 => {
+                Key::Enter => {
+                    match app.current_index {
+                        3 => {
+                            app.words = parser::parse_words("quote", None).unwrap();
+                            app.restart(State::TypingGame);
+                        }
+
+                        _ => ()
+                    }
+                }
+                                        /*1 => {
                                             if app.wordlist.0 {
-                                                let parsed = parser::parse_words("wordlist", &mut app);
+                                                let parsed = parser::parse_words("wordlist", Some(app.input_string));
 
                                                 if parsed.is_ok() {
                                                     app.restart(State::TypingGame);
@@ -316,28 +346,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                                     thread::spawn(move || handle_connection(stream, sender));
                                                 }
                                             }
-                                        }
+                                        }*/
 
-                                        3 => {
-                                            parser::parse_words("quote", &mut app).unwrap();
-                                            app.restart(State::TypingGame);
-                                        }
-
-                                        _ => ()
-                                    }
-
-                                }
-
-                                _ => {
-                                    if app.wordlist.0 {
+                                //_ => {
+                                    /*if app.wordlist.0 {
                                         app.wordlist.1.push(c);
                                     } else if app.host.0 {
                                         app.host.1.push(c);
                                     }
-                                }
-                            }
-                        }
-
                         _ => {
                             if app.timer.is_none() {
                                 app.start_timer();
@@ -354,7 +370,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                         }
                     }
-                }
+                }*/
 
                 Key::Up => {
                     match app.state {
@@ -409,11 +425,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
 
                         State::MainMenu => {
-                            if app.wordlist.0 {
+                            /*if app.wordlist.0 {
                                 app.wordlist.1.pop();
                             } else if app.host.0 {
                                 app.host.1.pop();
-                            }
+                            }*/
                         }
 
                         _ => ()
@@ -424,5 +440,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+    disable_raw_mode()?;
     Ok(())
 }

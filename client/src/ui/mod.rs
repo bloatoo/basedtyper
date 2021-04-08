@@ -1,5 +1,8 @@
 use tui::{backend::Backend, layout::{Alignment, Constraint, Direction, Layout}, terminal::Frame, text::Spans, widgets::Paragraph};
 
+pub mod utils;
+pub mod wordlist;
+
 pub fn centered_spans<'a>(size: &u16) -> Vec<Spans> {
     let mut v = Vec::new();
 

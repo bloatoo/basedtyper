@@ -10,8 +10,8 @@ edition = "2018"
 # lto = true
 
 [dependencies]
-termion = "1.5.6"
-tui = "0.14.0"
+crossterm = "0.19.0"
+tui = { version = "0.14.0", features = ["crossterm"], default-features = false }
 ureq = "2.1.0"
 serde_json = "1.0.64"
 rand = "0.8"
