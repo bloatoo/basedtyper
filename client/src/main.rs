@@ -2,8 +2,10 @@ use basedtyper::{
     event::{*, key::Key},
     app::{App, State},
     parser,
+    input::input_handler,
     ui,
 };
+
 use parser::Word;
 use std::sync::mpsc::{Receiver, Sender, self};
 use serde_json::{json, Value};
@@ -33,7 +35,6 @@ fn handle_connection(mut stream: TcpStream, sender: Sender<String>) {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut app = App::default();
 
     let (sender, receiver): (Sender<String>, Receiver<String>) = mpsc::channel();
 
@@ -46,23 +47,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = Terminal::new(backend)?;
     let events = Events::new(250);
 
+    let mut app = App::new(terminal.size().unwrap());
+    
+    println!("\x1b[5 q");
+
     terminal.clear().unwrap();
 
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .margin(5)
-            .constraints([Constraint::Percentage(100)])
-            .split(terminal.size().unwrap());
-
-
     loop {
+        terminal.draw(|f| ui::draw_ui(f, &app)).unwrap();
+
+        if let Ok(Event::Input(event)) = events.next() {
+            input_handler(event, &mut app);
+        }
+
+        if app.should_exit {
+            break;
+        }
+    }
+
+    /*loop {
         let words_vec = app.words
             .iter()
             .map(|elem| elem.get_word().into())
             .collect::<Vec<String>>();
 
         let mut word_string = words_vec.join(" ");
-
 
         if let Ok(val) = receiver.try_recv() {
             let json: Value = serde_json::from_str(&val).unwrap();
@@ -99,9 +108,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let word_string = re.replace_all(word_string, " ");
         let word_string = word_string.trim();
 
-        terminal.draw(|f| {
-            //ui::draw(f);
-            let mut to_be_rendered_str: Vec<Span> = vec![];
+            /*let mut to_be_rendered_str: Vec<Span> = vec![];
             
             match app.state {
                 State::MainMenu => {
@@ -265,9 +272,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ));*/
                 }
             _ => (),
-            }
-        })
-        .unwrap();
+            }*/
 
         if let Ok(Event::Input(event)) = events.next() {
             match event {
@@ -439,7 +444,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 _ => (),
             }
         }
-    }
+    }*/
+
     disable_raw_mode()?;
     Ok(())
 }

@@ -1,3 +1,5 @@
+use tui::layout::{Constraint, Direction, Layout, Rect};
+
 use super::{config::Config, parser::Word};
 use std::{path::Path, time::Instant};
 
@@ -10,6 +12,9 @@ pub struct App {
     pub current_index: usize,
     pub current_error: String,
     pub words: Vec<Word>,
+    pub should_exit: bool,
+    pub word_string: String,
+    pub chunks: Vec<Rect>
 }
 
 pub enum State {
@@ -21,7 +26,13 @@ pub enum State {
 }
 
 impl App {
-    pub fn default() -> Self {
+    pub fn new(area: Rect) -> Self {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(5)
+            .constraints([Constraint::Percentage(100)])
+            .split(area);
+
         let config = Config::new();
 
         let (config, err) = if config.is_err() {
@@ -39,16 +50,26 @@ impl App {
             config,
             current_error: err,
             words: Vec::new(),
+            should_exit: false,
+            word_string: String::new(),
+            chunks,
         }
     }
 
     pub fn restart(&mut self, state: State) {
-        self.state = state;
-        self.timer = None;
         self.input_string = String::new();
         self.current_index = 1;
         self.time_taken = 0;
         self.current_error = String::new();
+
+        match state {
+            State::TypingGame => {
+                self.timer = Some(Instant::now());
+            }
+            _ => self.timer = None
+        }
+
+        self.state = state;
     }
 
     pub fn start_timer(&mut self) {

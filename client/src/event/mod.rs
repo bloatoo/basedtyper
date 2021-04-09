@@ -1,6 +1,6 @@
 pub mod key;
 
-use key::Key;
+pub use key::Key;
 use crossterm::event;
 use std::{sync::mpsc, thread, time::Duration};
 

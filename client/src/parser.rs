@@ -1,7 +1,7 @@
 use rand::Rng;
 use serde_json::Value;
 use std::{fs, io, path::Path};
-
+#[derive(Clone)]
 pub struct Word {
     word: String,
     definition: String,
@@ -71,7 +71,7 @@ pub fn parse_words(mode: &str, wordlist_path: Option<String>) -> Result<Vec<Word
         }
 
         _ => {
-            let parsed_words = parse_wordlist(wordlist_path.unwrap(), &10);
+            let parsed_words = parse_wordlist(wordlist_path.unwrap(), &2);
 
             if parsed_words.is_ok() {
                 return Ok(parsed_words.unwrap());
