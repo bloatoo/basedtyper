@@ -1,12 +1,10 @@
 use basedtyper::{
-    event::{*, key::Key},
-    app::{App, State},
-    parser,
+    event::*,
+    app::App,
     input::input_handler,
     ui,
 };
 
-use parser::Word;
 use std::sync::mpsc::{Receiver, Sender, self};
 use serde_json::{json, Value};
 
@@ -22,7 +20,7 @@ fn handle_connection(mut stream: TcpStream, sender: Sender<String>) {
         let mut buf = vec![0 as u8; 1024];
 
         if stream.read(&mut buf).is_err() {
-             println!("failed");
+             println!("failed to read from server");
         }
 
         buf.retain(|byte| byte != &u8::MIN);
@@ -35,7 +33,6 @@ fn handle_connection(mut stream: TcpStream, sender: Sender<String>) {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-
     let (sender, receiver): (Sender<String>, Receiver<String>) = mpsc::channel();
 
     enable_raw_mode()?;

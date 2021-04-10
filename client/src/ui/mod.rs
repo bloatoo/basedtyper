@@ -23,19 +23,7 @@ use tui::{
 pub mod utils;
 pub mod wordlist;
 
-pub fn spans(size: u16) -> Vec<Spans<'static>> {
-    let mut v = Vec::new();
-
-    for _ in 0..size {
-        v.push(Spans::default());    
-    }
-
-    v
-}
-
-pub fn center(spans: Vec<Spans<'static>>) -> Paragraph<'static> {
-    Paragraph::new(spans).alignment(Alignment::Center)
-}
+use utils::{center, spans};
 
 pub fn draw_end_screen<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     let wpm = (app.word_string.len() as f64 / 5_f64)
@@ -96,6 +84,16 @@ pub fn draw_main_menu<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
         };
 
         main_menu[chunk.height as usize / 2 + idx] = span;
+    }
+
+    
+
+    if app.wordlist.0 {
+        main_menu[chunk.height as usize - 2] = Spans::from(Span::raw(format!("wordlist name: {}", app.wordlist.1)));
+    }
+
+    if app.host.0 {
+        main_menu[chunk.height as usize - 2] = Spans::from(Span::raw(format!("host ip and port: {}", app.host.1)));
     }
 
     f.render_widget(center(main_menu), chunk);

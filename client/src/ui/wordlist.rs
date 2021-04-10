@@ -1,3 +1,4 @@
+//possible future implementation
 use tui::{text::{Span, Spans}, widgets::Paragraph};
 use crate::parser::Word;
 use super::utils::Render;
