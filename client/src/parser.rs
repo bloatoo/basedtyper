@@ -71,7 +71,7 @@ pub fn parse_words(mode: &str, wordlist_path: Option<String>) -> Result<Vec<Word
         }
 
         _ => {
-            let parsed_words = parse_wordlist(wordlist_path.unwrap(), &2);
+            let parsed_words = parse_wordlist(wordlist_path.unwrap(), &10);
 
             if parsed_words.is_ok() {
                 return Ok(parsed_words.unwrap());
@@ -102,7 +102,7 @@ pub fn parse_wordlist<T: AsRef<Path>>(path: T, count: &u32) -> Result<Vec<Word>,
             let rand = rand::thread_rng().gen_range(0..chunks.len());
             let word: Vec<&str> = chunks[rand].split('\n').collect();
 
-            words.push(Word::new(word[0], ""));
+            words.push(Word::new(word[0], word[1]));
         }
 
         Ok(words)

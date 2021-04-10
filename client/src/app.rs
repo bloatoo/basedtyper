@@ -1,7 +1,8 @@
 use tui::layout::{Constraint, Direction, Layout, Rect};
+use crossterm::{execute, terminal::{LeaveAlternateScreen, disable_raw_mode}};
 
 use super::{config::Config, parser::Word};
-use std::{path::Path, time::Instant};
+use std::{path::Path, time::Instant, io};
 
 pub struct App {
     pub state: State,
@@ -76,6 +77,12 @@ impl App {
         self.timer = Some(Instant::now());
     }
 
+    pub fn exit(&self) -> Result<(), Box<dyn std::error::Error>> {
+        disable_raw_mode()?;
+        let mut stdout = io::stdout();
+        execute!(stdout, LeaveAlternateScreen)?;
+        Ok(())
+    }
     pub fn locate_wordlist(&self, wordlist_name: &str) -> String {
         let wordlist_name = if wordlist_name.ends_with(".basedtyper") {
             wordlist_name.to_string()

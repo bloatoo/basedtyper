@@ -40,18 +40,19 @@ pub fn input_handler(key: Key, app: &mut App) {
                         1 => {
                             let words = crate::parser::parse_words("wordlist", Some(String::from("example.basedtyper"))).unwrap();
                             
-                            let mut words_string = words
+                            let words_vec = words
                                 .iter()
                                 .map(|elem| elem.get_word().into())
-                                .collect::<Vec<String>>()
-                                .join(" ");
+                                .collect::<Vec<String>>();
 
-                            if words_string.len() as u16 > app.chunks[0].width {
-                                words_string = String::from(&words_string[..app.chunks[0].width as usize - 2]);
+                            let mut word_string = words_vec.join(" ");
+
+                            if word_string.len() as u16 > app.chunks[0].width {
+                                word_string = String::from(&word_string[..app.chunks[0].width as usize]);
                             }
 
                             app.words = words;
-                            app.word_string = String::from(words_string);
+                            app.word_string = word_string;
                             app.restart(State::TypingGame);
                         }
 
@@ -84,16 +85,37 @@ pub fn input_handler(key: Key, app: &mut App) {
         Key::Char(c) => {
             match app.state {
                 State::TypingGame => {
-                    app.input_string.push(c);
-
                     if app.timer.is_none() {
                         app.timer = Some(Instant::now());
                     }
-                    if app.input_string == app.word_string {
-                        std::process::exit(0);
+
+                    if app.input_string.len() < app.word_string.len() {
+                        app.input_string.push(c);
+                        app.increment_index();
                     }
 
-                    app.increment_index();
+                    if app.input_string == app.word_string {
+                        app.state = State::EndScreen;
+                        app.time_taken = if app.timer.is_some() { app.timer.unwrap().elapsed().as_millis() } else { 0 };
+                    }
+
+
+                }
+
+                State::EndScreen => {
+                    match c {
+                        'q' => app.should_exit = true,
+
+                        'r' => {
+                            app.restart(State::TypingGame);
+                        }
+
+                        'm' => {
+                            app.restart(State::MainMenu);
+                        }
+
+                        _ => (),
+                    }
                 }
 
                 _ => ()
@@ -101,8 +123,7 @@ pub fn input_handler(key: Key, app: &mut App) {
         }
 
         Key::Esc => {
-            disable_raw_mode().unwrap();
-            std::process::exit(0);
+            app.should_exit = true;
         }
         _ => ()
     }
