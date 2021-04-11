@@ -40,7 +40,7 @@ impl Config {
 
         if !Path::new(&default_path).is_dir() {
             fs::create_dir(&default_path).unwrap();
-            fs::create_dir(default_path.clone() + "/wordlists").unwrap();
+            fs::create_dir(default_path + "/wordlists").unwrap();
         }
 
         Self {

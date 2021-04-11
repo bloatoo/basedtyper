@@ -2,8 +2,7 @@ use tui::layout::{Constraint, Direction, Layout, Rect};
 use crossterm::{execute, terminal::{LeaveAlternateScreen, disable_raw_mode}};
 
 use super::{config::Config, parser::Word};
-use std::{io, net::TcpStream, path::Path, sync::mpsc::Receiver, time::Instant};
-use crate::handlers::connection_handler;
+use std::{io,path::Path, time::Instant};
 
 pub struct App {
     pub state: State,

@@ -1,19 +1,15 @@
 use basedtyper::{
     event::*,
     app::App,
-    handlers::{input_handler, message_handler, connection_handler},
+    handlers::{message_handler, input_handler},
     ui,
 };
 
-use std::sync::mpsc::{Receiver, Sender, self};
-use serde_json::{json, Value};
+use std::{io, sync::mpsc};
 
-use std::{net::TcpStream, cmp::Ordering, io::{self, Read, Write}};
-use std::thread;
+use crossterm::{ExecutableCommand, terminal::{enable_raw_mode, EnterAlternateScreen}};
 
-use crossterm::{ExecutableCommand, cursor::MoveTo, execute, terminal::{enable_raw_mode, disable_raw_mode, EnterAlternateScreen}};
-
-use tui::{Terminal, backend::CrosstermBackend, layout::{Alignment, Constraint, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans, Text}, widgets::Paragraph};
+use tui::{Terminal, backend::CrosstermBackend};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode()?;
@@ -22,7 +18,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     stdout.execute(EnterAlternateScreen).unwrap();
 
     let (sender, receiver) = mpsc::channel();
-
 
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
@@ -35,8 +30,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     terminal.clear().unwrap();
 
     loop {
-        if let Ok(_msg) = receiver.try_recv() {
-            
+        if let Ok(msg) = receiver.try_recv() {
+            message_handler(msg, &mut app);
         }
 
         terminal.draw(|f| ui::draw_ui(f, &app)).unwrap();

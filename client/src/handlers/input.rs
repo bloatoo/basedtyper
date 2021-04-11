@@ -1,7 +1,8 @@
-use std::{sync::mpsc::Sender, time::Instant};
+use std::{net::TcpStream, sync::mpsc::Sender, time::Instant};
 
 use crate::event::Key;
 use crate::{parser, app::{State, App}};
+use super::connection_handler;
 
 fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
     let words = parser::parse_words(mode.to_string().as_str(), wordlist_path);
@@ -76,6 +77,20 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>) {
                             match app.wordlist.0 {
                                 false => app.wordlist.0 = true,
                                 true => set_wordlist("wordlist", Some(app.locate_wordlist()), app),
+                            }
+                        }
+
+                        2 => {
+
+                            let stream = TcpStream::connect(app.host.1.clone());
+                            match stream {
+                                Ok(stream) => {
+                                    std::thread::spawn(move || connection_handler(stream.try_clone().unwrap(), sender));
+                                }
+
+                                Err(err) => {
+                                    app.current_error = err.to_string();
+                                }
                             }
                         }
 
