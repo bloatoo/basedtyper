@@ -1,20 +1,26 @@
-use server::client::Client;
-use server::app::Server;
+use server::{server::Server, client::Client};
 
-use std::{
-    net::TcpListener,
-    io::{Read, Write}
-};
+use std::{io::{self, Read, Write}, net::TcpListener, sync::mpsc::Receiver, thread};
 
 use std::sync::mpsc;
 
 use serde_json::{json, Value};
 
+fn nonblocking_stdin() -> Receiver<String> {
+    let (sender, receiver) = mpsc::channel();
+
+    thread::spawn(move || loop {
+        let mut buf = String::new();
+        io::stdin().read_line(&mut buf).unwrap();
+        sender.send(buf).unwrap();
+    });
+    receiver
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
     let server = Server::default();
-    let clients_clone = server.clients.clone();
 
     let (sender, receiver) = mpsc::channel::<String>();
     
@@ -30,17 +36,14 @@ fn main() {
 
     println!("server started on port {}", port);
 
+    let input = nonblocking_stdin();
+
     loop {
         if let Ok(data) = receiver.try_recv() {
-            let mut clients = clients_clone.lock().unwrap();
+        }
 
-            for idx in 0..clients.len() {
-                let client = &mut clients[idx];
-
-                if client.tcp.write(data.as_bytes()).is_err() {
-                    clients.remove(idx);
-                }
-            }
+        if let Ok(data) = input.try_recv() {
+            println!("{}", data);
         }
 
         if let Ok((mut stream, _)) = listener.accept() {

@@ -75,22 +75,29 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>) {
                     match app.current_index {
                         1 => {
                             match app.wordlist.0 {
-                                false => app.wordlist.0 = true,
                                 true => set_wordlist("wordlist", Some(app.locate_wordlist()), app),
+
+                                false => app.wordlist.0 = true,
                             }
                         }
 
                         2 => {
-
-                            let stream = TcpStream::connect(app.host.1.clone());
-                            match stream {
-                                Ok(stream) => {
-                                    std::thread::spawn(move || connection_handler(stream.try_clone().unwrap(), sender));
+                            match app.host.0 {
+                                true => {
+                                    let stream = TcpStream::connect(app.host.1.clone());
+        
+                                    match stream {
+                                        Ok(stream) => {
+                                            std::thread::spawn(move || connection_handler(stream.try_clone().unwrap(), sender));
+                                        }
+        
+                                        Err(err) => {
+                                            app.current_error = err.to_string();
+                                        }
+                                    }
                                 }
 
-                                Err(err) => {
-                                    app.current_error = err.to_string();
-                                }
+                                false => app.host.0 = true,
                             }
                         }
 
