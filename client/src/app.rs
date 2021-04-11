@@ -2,7 +2,8 @@ use tui::layout::{Constraint, Direction, Layout, Rect};
 use crossterm::{execute, terminal::{LeaveAlternateScreen, disable_raw_mode}};
 
 use super::{config::Config, parser::Word};
-use std::{path::Path, time::Instant, io};
+use std::{io, net::TcpStream, path::Path, sync::mpsc::Receiver, time::Instant};
+use crate::handlers::connection_handler;
 
 pub struct App {
     pub state: State,
@@ -17,7 +18,7 @@ pub struct App {
     pub word_string: String,
     pub wordlist: (bool, String),
     pub host: (bool, String),
-    pub chunks: Vec<Rect>
+    pub chunks: Vec<Rect>,
 }
 
 pub enum State {

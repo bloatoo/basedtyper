@@ -38,6 +38,11 @@ pub fn parse_words(mode: &str, wordlist_path: Option<String>) -> Result<Vec<Word
             let mut words = Vec::new();
 
             let quote = json["data"]["children"][rand::thread_rng().gen_range(0..100) as usize]["data"]["selftext"].as_str().unwrap();
+
+            let re = regex::Regex::new("^\t\r\n\x20-\x7E]+").unwrap();
+
+            let quote = re.replace_all(quote, "");
+            let quote = quote.trim();
             
             for word in quote.split(" ") {
                 words.push(Word::new(word, ""));

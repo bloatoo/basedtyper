@@ -1,11 +1,6 @@
 use crate::app::{State, App};
 use std::cmp::Ordering;
-
-use tui::{
-    backend::Backend,
-    layout::{
-        Alignment,
-        Rect
+use tui::{ backend::Backend, layout::{ Alignment, Rect
     },
     style::{
         Color,
@@ -69,7 +64,6 @@ pub fn draw_main_menu<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
         .fg(Color::Magenta)
         .add_modifier(Modifier::BOLD)));
 
-
     let menu_items: Vec<String> = vec![
         String::from("wordlist"),
         String::from("multiplayer (VERY UNSTABLE)"),
@@ -85,16 +79,22 @@ pub fn draw_main_menu<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
 
         main_menu[chunk.height as usize / 2 + idx] = span;
     }
-
     
+    let height = chunk.height as usize;
 
     if app.wordlist.0 {
-        main_menu[chunk.height as usize - 2] = Spans::from(Span::raw(format!("wordlist name: {}", app.wordlist.1)));
+        main_menu[height / 2 + height / 4] = Spans::from(Span::raw(format!("wordlist name: {}", app.wordlist.1)));
     }
 
     if app.host.0 {
-        main_menu[chunk.height as usize - 2] = Spans::from(Span::raw(format!("host ip and port: {}", app.host.1)));
+        main_menu[height / 2 + height / 4] = Spans::from(Span::raw(format!("host ip and port: {}", app.host.1)));
     }
+
+    if !app.current_error.is_empty() {
+        main_menu[height / 2 + height / 4 + 1] = Spans::from(Span::styled(app.current_error.clone(), Style::default().fg(Color::Red)));
+    }
+
+    main_menu[chunk.height as usize - 1] = Spans::from(format!("wordlist directory: {}", app.config.wordlist_directory.clone()));
 
     f.render_widget(center(main_menu), chunk);
 }
@@ -135,8 +135,8 @@ pub fn draw_typing_game<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     }
 
     f.set_cursor(
-        chunk.x + chunk.width / 2 + app.current_index as u16
-            - words.len() as u16 / 2,
+        chunk.x + (chunk.width as f32 / 2.0).round() as u16 + app.current_index as u16
+            - (words.len() as f32 / 2.0).round() as u16,
         chunk.y + chunk.height / 2
     );
 

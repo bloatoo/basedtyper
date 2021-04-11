@@ -1,10 +1,17 @@
-use std::time::Instant;
+use std::{sync::mpsc::Sender, time::Instant};
 
 use crate::event::Key;
 use crate::{parser, app::{State, App}};
 
 fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
-    let words = parser::parse_words(mode.to_string().as_str(), wordlist_path).unwrap();
+    let words = parser::parse_words(mode.to_string().as_str(), wordlist_path);
+
+    if let Err(err) = words {
+        app.current_error = err.to_string();
+        return;
+    }
+
+    let words = words.unwrap();
     
     let words_vec = words
         .iter()
@@ -22,7 +29,7 @@ fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
     app.restart(State::TypingGame);
 }
 
-pub fn input_handler(key: Key, app: &mut App) {
+pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>) {
     match key {
         Key::Up => {
             match app.state {
@@ -48,9 +55,19 @@ pub fn input_handler(key: Key, app: &mut App) {
                     app.input_string.pop();
                     app.decrement_index();
                 }
+
+                State::MainMenu => {
+                    if app.wordlist.0 {
+                        app.wordlist.1.pop();
+                    } else if app.host.0 {
+                        app.host.1.pop();
+                    }
+                }
+
                 _ => ()
             }
         }
+
         Key::Enter => {
             match app.state {
                 State::MainMenu => {
@@ -71,6 +88,20 @@ pub fn input_handler(key: Key, app: &mut App) {
             }
         }
 
+        Key::Ctrl(c) => {
+            match app.state {
+                State::TypingGame => {
+                    match c {
+                        'r' => app.restart(State::TypingGame),
+                        'c' => app.restart(State::MainMenu),
+                        _ => (),
+                    }
+                }
+
+                _ => (),
+            }
+        }
+
         Key::Char(c) => {
             match app.state {
                 State::TypingGame => {
@@ -83,7 +114,7 @@ pub fn input_handler(key: Key, app: &mut App) {
                         app.increment_index();
                     }
 
-                    if app.input_string == app.word_string {
+                    if app.input_string.trim() == app.word_string.trim() {
                         app.state = State::EndScreen;
                         app.time_taken = if app.timer.is_some() { app.timer.unwrap().elapsed().as_millis() } else { 0 };
                     }

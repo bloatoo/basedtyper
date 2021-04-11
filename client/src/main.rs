@@ -1,7 +1,7 @@
 use basedtyper::{
     event::*,
     app::App,
-    input::input_handler,
+    handlers::{input_handler, message_handler, connection_handler},
     ui,
 };
 
@@ -15,34 +15,18 @@ use crossterm::{ExecutableCommand, cursor::MoveTo, execute, terminal::{enable_ra
 
 use tui::{Terminal, backend::CrosstermBackend, layout::{Alignment, Constraint, Direction, Layout, Margin}, style::{Color, Modifier, Style}, text::{Span, Spans, Text}, widgets::Paragraph};
 
-fn handle_connection(mut stream: TcpStream, sender: Sender<String>) {
-    loop {
-        let mut buf = vec![0 as u8; 1024];
-
-        if stream.read(&mut buf).is_err() {
-             println!("failed to read from server");
-        }
-
-        buf.retain(|byte| byte != &u8::MIN);
-        let data = String::from_utf8(buf).unwrap();
-
-        if data.len() > 0 {
-            sender.send(data).unwrap();
-        }
-    }
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (sender, receiver): (Sender<String>, Receiver<String>) = mpsc::channel();
-
     enable_raw_mode()?;
 
     let mut stdout = io::stdout();
     stdout.execute(EnterAlternateScreen).unwrap();
 
+    let (sender, receiver) = mpsc::channel();
+
+
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-    let events = Events::new(250);
+    let events = Events::new(1000);
 
     let mut app = App::new(terminal.size().unwrap());
     
@@ -51,10 +35,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     terminal.clear().unwrap();
 
     loop {
+        if let Ok(_msg) = receiver.try_recv() {
+            
+        }
+
         terminal.draw(|f| ui::draw_ui(f, &app)).unwrap();
 
         if let Ok(Event::Input(event)) = events.next() {
-            input_handler(event, &mut app);
+            input_handler(event, &mut app, sender.clone());
         }
 
         if app.should_exit {

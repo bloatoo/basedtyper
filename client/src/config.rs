@@ -44,7 +44,7 @@ impl Config {
         }
 
         Self {
-            wordlist_directory: default_path + "/wordlists",
+            wordlist_directory: home_dir, //default_path + "/wordlists",
             definitions: true,
             cache_quotes: false,
         }
