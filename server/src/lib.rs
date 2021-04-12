@@ -1,3 +1,4 @@
 pub mod client;
-pub mod server;
+//pub mod server;
 pub mod word;
+pub mod input;
