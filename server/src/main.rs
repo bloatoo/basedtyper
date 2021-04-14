@@ -1,8 +1,5 @@
 use server::{server::Server, client::Client};
-
-use std::{io::{self, Read, Write}, net::TcpListener, sync::mpsc::{Sender, Receiver}, thread};
-
-use std::sync::{Arc, Mutex};
+use std::{io::{self, Read, Write}, net::TcpListener, sync::mpsc::{Sender, Receiver}, thread}; use std::sync::{Arc, Mutex};
 
 use std::sync::mpsc;
 
@@ -18,103 +15,62 @@ fn nonblocking_stdin() -> Receiver<String> {
     });
     receiver
 }
+fn main() { let (sender, receiver) = mpsc::channel::<String>(); let input = nonblocking_stdin();
 
-fn start_server(port: u32, main: Sender<String>) {
-    let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).expect("failed to bind");
+    let port = std::env::args().nth(1).unwrap_or(String::from("1337"));
+    let port = port.parse::<u32>().unwrap_or(1337);
+
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).unwrap();
 
     let clients: Arc<Mutex<Vec<Client>>> = Arc::new(Mutex::new(Vec::new()));
 
-    let (sender, receiver) = mpsc::channel();
+    listener.set_nonblocking(true).unwrap();
 
-    listener.set_nonblocking(true).expect("failed");
-    
-    println!("server started");
+    println!("Server started on port {}.", port);
 
     loop {
-        if let Ok(_data) = receiver.try_recv() {
+        if let Ok(_msg) = receiver.try_recv() {
             
         }
-        if let Ok((mut stream, _)) = listener.accept() {
-            println!("new connection: {}", stream.peer_addr().unwrap());
-    
-            let sender = sender.clone();
-    
-            let clients = clients.clone();
 
-            std::thread::spawn(move || loop {
-                let mut buf = vec![0 as u8; 1024];
-    
-                if let Err(err) = stream.read(&mut buf) {
-                    println!("error: {}", err.to_string());
-                }
-                    
-                buf.retain(|byte| byte != &u8::MIN);
-    
-                let data = String::from_utf8(buf).unwrap();
-    
-    
-                if data.len() > 0 {
-                    let json: Value = serde_json::from_str(&data).unwrap();
-    
-                    match json["call"].as_str().unwrap() {
-                        "init" => {
-                            let mut clients = clients.lock().unwrap();
-                            let username = &json["data"]["username"].as_str().unwrap();
-    
-                            let client = Client::new(stream.try_clone().unwrap(), username.to_string());
-                            clients.push(client);
-                            println!("new client with username {}", username);
-    
-                            let json = json!({
-                                "call": "words",
-                                "data": {
-                                    "words": "these are some random words",
-                                }
-                            });
-    
-                            let data = serde_json::to_string(&json).unwrap();
-        
-                            sender.send(data).unwrap();
-                        }
-                        
-                        _ => ()
-                    }   
-        
-                }
-    
-            });
-        }   
-    }
-}   
-
-fn main() {
-    let args: Vec<String> = std::env::args().collect();
-
-    let (sender, receiver) = mpsc::channel::<String>();
-    
-    let port = if args.len() > 1 {
-        args[1].parse::<u32>().expect("failed to parse port from argument")
-    } else {
-        1337
-    };
-
-    let input = nonblocking_stdin();
-
-    loop {
-        if let Ok(data) = receiver.try_recv() {
+        if let Ok(_data) = input.try_recv() {
+            
         }
 
-        if let Ok(data) = input.try_recv() {
-            println!("{}", data);
-            let args: Vec<&str> = data.split(" ").collect();
-            //let port = args[1].parse::<u32>().unwrap();
-            match args[0] {
-                "start" => {
-                    let sender = sender.clone();
-                    thread::spawn(move || start_server(1337, sender));
+        if let Ok((mut stream, _)) = listener.accept() {
+            let clients = clients.clone();
+            let sender = sender.clone();
+            std::thread::spawn(move || {
+                let mut buf = vec![0u8; 1024];
+
+                if let Err(e) = stream.read(&mut buf) {
+                    println!("Failed to read from stream: {}", e.to_string());
                 }
-                _ => ()
-            }
+
+                buf.retain(|byte| byte != &u8::MIN);
+
+                if !buf.is_empty() {
+                    let message = String::from_utf8(buf).unwrap();
+
+                    let json: Value = serde_json::from_str(&message).unwrap();
+
+                    let call = json["call"].as_str();
+
+                    if let Some(call) = call {
+                        if call == "init" {
+                            let username = String::from(json["data"]["username"].as_str().unwrap_or("anonymous"));
+
+                            println!("new client with username {}", username);
+
+                            let mut clients = clients.lock().unwrap();
+                            clients.push(Client::new(stream.try_clone().unwrap(), username));
+                        }
+                    }
+
+                    sender.send(message).unwrap();
+                }
+
+            });
         }
 
     }
