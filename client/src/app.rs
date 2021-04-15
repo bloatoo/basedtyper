@@ -1,8 +1,9 @@
+use io::{Read, Write};
 use tui::layout::{Constraint, Direction, Layout, Rect};
 use crossterm::{execute, terminal::{LeaveAlternateScreen, disable_raw_mode}};
 
 use super::{config::Config, parser::Word};
-use std::{io,path::Path, time::Instant};
+use std::{io, net::{TcpListener, TcpStream}, path::Path, sync::mpsc::{self, Sender}, time::Instant};
 
 pub struct App {
     pub state: State,
@@ -18,11 +19,13 @@ pub struct App {
     pub wordlist: (bool, String),
     pub host: (bool, String),
     pub chunks: Vec<Rect>,
+    pub connection: Option<Sender<String>>
 }
 
 pub enum State {
     MainMenu,
     EndScreen,
+    Waiting,
     TypingGame,
     WordlistPrompt,
     HostPrompt,
@@ -57,8 +60,42 @@ impl App {
             word_string: String::new(),
             wordlist: (false, String::new()),
             host: (false, String::new()),
+            connection: None,
             chunks,
         }
+    }
+
+    pub fn connect(&mut self, host: String, sender: Sender<String>)  {
+        let stream = TcpStream::connect(host);
+
+        if let Err(e) = stream {
+            self.current_error = e.to_string();
+            return;
+        }
+
+        let (connection_sender, connection_receiver) = mpsc::channel::<String>();
+        self.connection = Some(connection_sender);
+        self.state = State::Waiting;
+
+        let mut stream = stream.unwrap();
+
+        std::thread::spawn(move || loop {
+            let mut buf = vec![0u8; 1024];
+
+            if let Err(_) = stream.read(&mut buf) {
+                break;
+            }
+
+            if let Ok(msg) = connection_receiver.recv() {
+            }
+
+            buf.retain(|byte| byte != &u8::MIN);
+
+            if !buf.is_empty() {
+                let data = String::from_utf8(buf).unwrap();
+                sender.send(data).unwrap();
+            }
+        });
     }
 
     pub fn restart(&mut self, state: State) {
@@ -89,6 +126,7 @@ impl App {
         execute!(stdout, LeaveAlternateScreen)?;
         Ok(())
     }
+
     pub fn locate_wordlist(&self) -> String {
         let wordlist_name = if self.wordlist.1.ends_with(".basedtyper") {
             self.wordlist.1.to_string()

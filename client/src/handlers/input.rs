@@ -84,17 +84,7 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>) {
                         2 => {
                             match app.host.0 {
                                 true => {
-                                    let stream = TcpStream::connect(app.host.1.clone());
-        
-                                    match stream {
-                                        Ok(stream) => {
-                                            std::thread::spawn(move || connection_handler(stream.try_clone().unwrap(), sender));
-                                        }
-        
-                                        Err(err) => {
-                                            app.current_error = err.to_string();
-                                        }
-                                    }
+                                    sender.send(format!("connect {}", app.host.1)).unwrap();
                                 }
 
                                 false => app.host.0 = true,

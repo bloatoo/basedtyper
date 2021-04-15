@@ -99,6 +99,13 @@ pub fn draw_main_menu<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     f.render_widget(center(main_menu), chunk);
 }
 
+pub fn draw_waiting_screen<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
+    let mut spans = spans(chunk.height);
+    spans[chunk.height as usize / 2] = Spans::from(Span::styled("waiting for server...", Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD)));
+
+    f.render_widget(center(spans), chunk);
+}
+
 pub fn draw_typing_game<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     let mut ui_text = spans(chunk.height);
     let mut wordlist_string: Vec<Span> = Vec::new();
@@ -168,15 +175,19 @@ pub fn draw_typing_game<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
 pub fn draw_ui<T: Backend>(f: &mut Frame<T>, app: &App) {
     match app.state {
         State::MainMenu => {
-            draw_main_menu(f, app.chunks[0].clone(), app);
+            draw_main_menu(f, app.chunks[0], app);
         }
 
         State::TypingGame => {
-            draw_typing_game(f, app.chunks[0].clone(), app);
+            draw_typing_game(f, app.chunks[0], app);
         }
 
         State::EndScreen => {
-            draw_end_screen(f, app.chunks[0].clone(), app);
+            draw_end_screen(f, app.chunks[0], app);
+        }
+
+        State::Waiting => {
+            draw_waiting_screen(f, app.chunks[0], app);
         }
 
         _ => ()

@@ -38,6 +38,7 @@ fn main() { let (sender, receiver) = mpsc::channel::<String>(); let input = nonb
         }
 
         if let Ok((mut stream, _)) = listener.accept() {
+            println!("New connection: {}", stream.peer_addr().unwrap());
             let clients = clients.clone();
             let sender = sender.clone();
             std::thread::spawn(move || {

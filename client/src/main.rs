@@ -17,7 +17,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stdout = io::stdout();
     stdout.execute(EnterAlternateScreen).unwrap();
 
-    let (sender, receiver) = mpsc::channel();
+    let (input_sender, input_receiver) = mpsc::channel::<String>();
+    let (connection_sender, connection_receiver) = mpsc::channel::<String>();
 
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
@@ -30,14 +31,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     terminal.clear().unwrap();
 
     loop {
-        if let Ok(msg) = receiver.try_recv() {
+        if let Ok(msg) = connection_receiver.try_recv() {
             message_handler(msg, &mut app);
+        }
+
+        if let Ok(msg) = input_receiver.try_recv() {
+            let args: Vec<&str> = msg.split(" ")
+                .map(|elem| elem.trim())
+                .collect();
+
+            match args[0] {
+                "connect" => {
+                    let host = args[1];
+                    let connection_sender = connection_sender.clone();
+                    app.connect(host.to_string(), connection_sender);
+                }
+
+                _ => ()
+            }
         }
 
         terminal.draw(|f| ui::draw_ui(f, &app)).unwrap();
 
         if let Ok(Event::Input(event)) = events.next() {
-            input_handler(event, &mut app, sender.clone());
+            input_handler(event, &mut app, input_sender.clone());
         }
 
         if app.should_exit {

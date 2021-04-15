@@ -8,9 +8,9 @@ pub struct Word {
 }
 
 impl Word {
-    pub fn new<T: ToString>(word: T, definition: T) -> Self {
-        let word = word.to_string();
-        let definition = definition.to_string();
+    pub fn new<T: Into<String>>(word: T, definition: T) -> Self {
+        let word = word.into();
+        let definition = definition.into();
 
         Self {
             word,
