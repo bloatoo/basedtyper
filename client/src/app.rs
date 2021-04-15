@@ -1,9 +1,10 @@
 use io::{Read, Write};
 use tui::layout::{Constraint, Direction, Layout, Rect};
 use crossterm::{execute, terminal::{LeaveAlternateScreen, disable_raw_mode}};
+use serde_json::json;
 
 use super::{config::Config, parser::Word};
-use std::{io, net::{TcpListener, TcpStream}, path::Path, sync::mpsc::{self, Sender}, time::Instant};
+use std::{io, net::{TcpListener, TcpStream}, path::Path, sync::mpsc::{self, Sender, Receiver}, time::Instant};
 
 pub struct App {
     pub state: State,
@@ -65,38 +66,52 @@ impl App {
         }
     }
 
-    pub fn connect(&mut self, host: String, sender: Sender<String>)  {
+    pub fn connect(&mut self, host: String, sender: Sender<String>) -> Result<Receiver<String>, std::io::Error> {
         let stream = TcpStream::connect(host);
 
         if let Err(e) = stream {
             self.current_error = e.to_string();
-            return;
+            return Err(e);
         }
 
         let (connection_sender, connection_receiver) = mpsc::channel::<String>();
-        self.connection = Some(connection_sender);
+        //self.connection = Some(connection_sender);
+        let mut stream = stream.unwrap();
         self.state = State::Waiting;
 
-        let mut stream = stream.unwrap();
+        let json = json!({
+            "call": "init",
+            "data": {
+                "username": "bloatoo",
+            }
+        });
+
+        stream.write(serde_json::to_string(&json).unwrap().as_bytes()).unwrap();
 
         std::thread::spawn(move || loop {
             let mut buf = vec![0u8; 1024];
 
+            /*if let Ok(msg) = connection_receiver.recv() {
+            }*/
+
             if let Err(_) = stream.read(&mut buf) {
                 break;
-            }
-
-            if let Ok(msg) = connection_receiver.recv() {
             }
 
             buf.retain(|byte| byte != &u8::MIN);
 
             if !buf.is_empty() {
                 let data = String::from_utf8(buf).unwrap();
-                sender.send(data).unwrap();
+                connection_sender.send(data).unwrap();
             }
         });
+        Ok(connection_receiver)
     }
+    
+    /*pub fn set_words(&mut self, words: Vec<Word>) {
+        self.words = words;
+        self.
+    }*/
 
     pub fn restart(&mut self, state: State) {
         self.input_string = String::new();

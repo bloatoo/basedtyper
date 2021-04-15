@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     stdout.execute(EnterAlternateScreen).unwrap();
 
     let (input_sender, input_receiver) = mpsc::channel::<String>();
-    let (connection_sender, connection_receiver) = mpsc::channel::<String>();
+    let (connection_sender, mut connection_receiver) = mpsc::channel::<String>();
 
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
@@ -44,7 +44,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "connect" => {
                     let host = args[1];
                     let connection_sender = connection_sender.clone();
-                    app.connect(host.to_string(), connection_sender);
+                    let connection = app.connect(host.to_string(), connection_sender);
+                    if let Ok(receiver) = connection {
+                        connection_receiver = receiver;
+                    }
                 }
 
                 _ => ()

@@ -5,7 +5,6 @@ use std::io::Write;
 
 pub struct Server {
     pub clients: Arc<Mutex<Vec<Client>>>,
-    pub game_started: bool,
     pub words: Vec<Word>,
 }
 
@@ -13,19 +12,20 @@ impl Server {
     pub fn default() -> Self {
         Self {
             clients: Arc::new(Mutex::new(Vec::new())),
-            game_started: false,
             words: Vec::new(),
         }
     }
 
-    pub fn call(&mut self, data: String) {
+    pub fn broadcast(&mut self, data: String) {
         let mut clients = self.clients.lock().unwrap();
 
         for i in 0..clients.len() {
+            println!("in broadcast loop, data: {}", data);
             let client = &mut clients[i];
 
-            if client.tcp.write(data.as_bytes()).is_err() {
+            if let Err(e) = client.tcp.write(data.as_bytes()) {
                 clients.remove(i);
+                println!("error: {}", e);
             }
         }
     }

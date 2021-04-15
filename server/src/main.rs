@@ -1,4 +1,4 @@
-use server::{server::Server, client::Client};
+use server::{server::Server, client::Client, handlers::{input_handler}};
 use std::{io::{self, Read, Write}, net::TcpListener, sync::mpsc::{Sender, Receiver}, thread}; use std::sync::{Arc, Mutex};
 
 use std::sync::mpsc;
@@ -22,7 +22,7 @@ fn main() { let (sender, receiver) = mpsc::channel::<String>(); let input = nonb
 
     let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).unwrap();
 
-    let clients: Arc<Mutex<Vec<Client>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut server = Server::default();
 
     listener.set_nonblocking(true).unwrap();
 
@@ -33,14 +33,17 @@ fn main() { let (sender, receiver) = mpsc::channel::<String>(); let input = nonb
             
         }
 
-        if let Ok(_data) = input.try_recv() {
-            
+        if let Ok(data) = input.try_recv() {
+            input_handler(data, &mut server);
         }
 
         if let Ok((mut stream, _)) = listener.accept() {
             println!("New connection: {}", stream.peer_addr().unwrap());
-            let clients = clients.clone();
+
+            let clients = server.clients.clone();
+
             let sender = sender.clone();
+
             std::thread::spawn(move || {
                 let mut buf = vec![0u8; 1024];
 
