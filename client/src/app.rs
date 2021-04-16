@@ -4,7 +4,7 @@ use crossterm::{execute, terminal::{LeaveAlternateScreen, disable_raw_mode}};
 use serde_json::json;
 
 use super::{config::Config, parser::Word};
-use std::{io, net::{TcpListener, TcpStream}, path::Path, sync::mpsc::{self, Sender, Receiver}, time::Instant};
+use std::{io, net::TcpStream, path::Path, sync::mpsc::{self, Sender, Receiver}, time::Instant};
 
 pub struct App {
     pub state: State,
@@ -66,7 +66,7 @@ impl App {
         }
     }
 
-    pub fn connect(&mut self, host: String, sender: Sender<String>) -> Result<Receiver<String>, std::io::Error> {
+    pub fn connect(&mut self, host: String) -> Result<(Sender<String>, Receiver<String>), std::io::Error> {
         let stream = TcpStream::connect(host);
 
         if let Err(e) = stream {
@@ -75,7 +75,8 @@ impl App {
         }
 
         let (connection_sender, connection_receiver) = mpsc::channel::<String>();
-        //self.connection = Some(connection_sender);
+        let (connection_input_sender, connection_input_receiver) = mpsc::channel::<String>();
+
         let mut stream = stream.unwrap();
         self.state = State::Waiting;
 
@@ -86,15 +87,18 @@ impl App {
             }
         });
 
-        stream.write(serde_json::to_string(&json).unwrap().as_bytes()).unwrap();
+        stream.write_all(serde_json::to_string(&json).unwrap().as_bytes()).unwrap();
 
         std::thread::spawn(move || loop {
             let mut buf = vec![0u8; 1024];
 
-            /*if let Ok(msg) = connection_receiver.recv() {
-            }*/
+            if let Ok(msg) = connection_input_receiver.recv() {
+                if stream.write(msg.as_bytes()).is_err() {
+                    
+                }
+            }
 
-            if let Err(_) = stream.read(&mut buf) {
+            if stream.read(&mut buf).is_err() {
                 break;
             }
 
@@ -105,14 +109,16 @@ impl App {
                 connection_sender.send(data).unwrap();
             }
         });
-        Ok(connection_receiver)
+
+        Ok((connection_input_sender, connection_receiver))
+    }
+
+    pub fn send_conn(&mut self, data: String) {
+        if let Some(conn) = self.connection.clone() {
+            conn.send(data).unwrap();
+        }
     }
     
-    /*pub fn set_words(&mut self, words: Vec<Word>) {
-        self.words = words;
-        self.
-    }*/
-
     pub fn restart(&mut self, state: State) {
         self.input_string = String::new();
         self.current_index = 1;
@@ -146,7 +152,7 @@ impl App {
         let wordlist_name = if self.wordlist.1.ends_with(".basedtyper") {
             self.wordlist.1.to_string()
         } else {
-            String::from(self.wordlist.1.clone()) + ".basedtyper"
+            self.wordlist.1.clone() + ".basedtyper"
         };
 
         let path_str = &(self.config.wordlist_directory.clone() + "/" + &wordlist_name);
@@ -155,7 +161,7 @@ impl App {
         let path = if path.is_file() {
             path.to_str().unwrap().to_string()
         } else {
-            wordlist_name.to_string()
+            wordlist_name
         };
 
         path

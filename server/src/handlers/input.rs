@@ -12,7 +12,7 @@ pub fn input_handler(data: String, server: &mut Server) {
             let json = json!({
                 "call": "start",
                 "data": {
-                    "words": "here are some random words",
+                    "words": args[1..].join(" "),
                 }
             });
 

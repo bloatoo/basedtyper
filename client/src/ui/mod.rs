@@ -99,7 +99,7 @@ pub fn draw_main_menu<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     f.render_widget(center(main_menu), chunk);
 }
 
-pub fn draw_waiting_screen<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
+pub fn draw_waiting_screen<T: Backend>(f: &mut Frame<T>, chunk: Rect, _app: &App) {
     let mut spans = spans(chunk.height);
     spans[chunk.height as usize / 2] = Spans::from(Span::styled("waiting for server...", Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD)));
 

@@ -1,9 +1,9 @@
-use server::{server::Server, client::Client, handlers::{input_handler}};
-use std::{io::{self, Read, Write}, net::TcpListener, sync::mpsc::{Sender, Receiver}, thread}; use std::sync::{Arc, Mutex};
+use server::{server::Server, client::Client, handlers::input_handler};
+use std::{io::{self, Read}, net::TcpListener, sync::mpsc::Receiver, thread};
 
 use std::sync::mpsc;
 
-use serde_json::{json, Value};
+use serde_json::Value;
 
 fn nonblocking_stdin() -> Receiver<String> {
     let (sender, receiver) = mpsc::channel();

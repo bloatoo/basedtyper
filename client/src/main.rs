@@ -36,16 +36,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         if let Ok(msg) = input_receiver.try_recv() {
-            let args: Vec<&str> = msg.split(" ")
+            let args: Vec<&str> = msg.split(' ')
                 .map(|elem| elem.trim())
                 .collect();
 
             match args[0] {
                 "connect" => {
                     let host = args[1];
-                    let connection_sender = connection_sender.clone();
-                    let connection = app.connect(host.to_string(), connection_sender);
-                    if let Ok(receiver) = connection {
+                    let connection = app.connect(host.to_string());
+                    if let Ok((_sender, receiver)) = connection {
                         connection_receiver = receiver;
                     }
                 }
@@ -57,7 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         terminal.draw(|f| ui::draw_ui(f, &app)).unwrap();
 
         if let Ok(Event::Input(event)) = events.next() {
-            input_handler(event, &mut app, input_sender.clone());
+            input_handler(event, &mut app, input_sender.clone(), connection_sender.clone());
         }
 
         if app.should_exit {

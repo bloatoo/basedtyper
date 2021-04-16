@@ -1,8 +1,9 @@
-use std::{net::TcpStream, sync::mpsc::Sender, time::Instant};
+use std::{sync::mpsc::Sender, time::Instant};
+
+//use serde_json::json;
 
 use crate::event::Key;
 use crate::{parser, app::{State, App}};
-use super::connection_handler;
 
 fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
     let words = parser::parse_words(mode.to_string().as_str(), wordlist_path);
@@ -30,7 +31,7 @@ fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
     app.restart(State::TypingGame);
 }
 
-pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>) {
+pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_sender: Sender<String>) {
     match key {
         Key::Up => {
             match app.state {
@@ -40,6 +41,7 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>) {
                 _ => ()
             }
         }
+
         Key::Down => {
             match app.state {
                 State::MainMenu => {
@@ -50,6 +52,7 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>) {
                 _ => ()
             }
         }
+
         Key::Backspace => {
             match app.state {
                 State::TypingGame => {
@@ -127,8 +130,20 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>) {
                     }
 
                     if app.input_string.trim() == app.word_string.trim() {
-                        app.state = State::EndScreen;
                         app.time_taken = if app.timer.is_some() { app.timer.unwrap().elapsed().as_millis() } else { 0 };
+                        app.state = State::EndScreen;
+
+                        /*let wpm = (app.word_string.len() as f64 / 5_f64)
+                            / ((app.time_taken as f64 / 1000_f64) / 60_f64);
+
+                        let json = json!({
+                            "call": "finish",
+                            "data": {
+                                "wpm": wpm,
+                            }
+                        });
+
+                        conn_sender.send(serde_json::to_string(&json).unwrap()).unwrap();*/
                     }
 
 

@@ -9,7 +9,7 @@ pub fn message_handler(msg: String, app: &mut App) {
         "start" => {
             let words = json["data"]["words"].as_str().unwrap();
             let words1: Vec<&str> = words
-                .split(" ")
+                .split(' ')
                 .collect();
 
             let words = words1.clone().iter()

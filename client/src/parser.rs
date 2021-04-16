@@ -44,7 +44,7 @@ pub fn parse_words(mode: &str, wordlist_path: Option<String>) -> Result<Vec<Word
             let quote = re.replace_all(quote, "");
             let quote = quote.trim();
             
-            for word in quote.split(" ") {
+            for word in quote.split(' ') {
                 words.push(Word::new(word, ""));
             }
 
@@ -78,8 +78,8 @@ pub fn parse_words(mode: &str, wordlist_path: Option<String>) -> Result<Vec<Word
         _ => {
             let parsed_words = parse_wordlist(wordlist_path.unwrap(), &10);
 
-            if parsed_words.is_ok() {
-                return Ok(parsed_words.unwrap());
+            if let Ok(words) = parsed_words {
+                return Ok(words);
             }
 
             Err(Box::new(parsed_words.err().unwrap()))
