@@ -4,6 +4,17 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct Config {
+    pub multiplayer: MultiplayerOptions,
+    pub general: GeneralOptions,
+}
+
+#[derive(Deserialize)]
+pub struct MultiplayerOptions {
+    pub username: String,
+}
+
+#[derive(Deserialize)]
+pub struct GeneralOptions {
     pub wordlist_directory: String,
     pub definitions: bool,
     pub cache_quotes: bool,
@@ -19,19 +30,13 @@ impl Config {
             return Err(err);
         }
 
-        let data: Result<Self, _> = toml::from_str(&file_contents.unwrap());
+        let data: Result<Config, _> = toml::from_str(&file_contents.unwrap());
 
-        if let Err(_err) = data {
+        if let Err(err) = data {
             return Ok(Config::default());
         }
 
-        let data = data.unwrap();
-
-        Ok(Self {
-            wordlist_directory: data.wordlist_directory,
-            definitions: data.definitions,
-            cache_quotes: data.cache_quotes,
-        })
+        Ok(data.unwrap())
     }
 
     pub fn default() -> Self {
@@ -40,13 +45,19 @@ impl Config {
 
         if !Path::new(&default_path).is_dir() {
             fs::create_dir(&default_path).unwrap();
-            fs::create_dir(default_path + "/wordlists").unwrap();
+            fs::create_dir(default_path.clone() + "/wordlists").unwrap();
         }
 
         Self {
-            wordlist_directory: home_dir, //default_path + "/wordlists",
-            definitions: true,
-            cache_quotes: false,
+            multiplayer: MultiplayerOptions {
+                username: String::from("anonymous"),
+            }, 
+
+            general: GeneralOptions {
+                wordlist_directory: default_path + "/wordlists",
+                definitions: true,
+                cache_quotes: false,
+            }
         }
     }
 

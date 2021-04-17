@@ -46,9 +46,7 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
     match key {
         Key::Up => {
             match app.state {
-                State::MainMenu => {
-                    app.decrement_index();
-                }
+                State::MainMenu => app.decrement_index(),
                 _ => ()
             }
         }
@@ -79,18 +77,12 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
 
         Key::Enter => {
             match app.state {
-                State::WordlistPrompt => {
-                    set_wordlist("wordlist", Some(app.wordlist_name.clone()), app);
-                }
-
-                State::HostPrompt => {
-                    sender.send(format!("connect {}", app.host_name)).unwrap();
-                }
-
+                State::WordlistPrompt => set_wordlist("wordlist", Some(app.locate_wordlist()), app),
+                State::HostPrompt => sender.send(format!("connect {}", app.host_name)).unwrap(),
                 State::MainMenu => {
                     match app.current_index {
-                        1 => app.state = State::WordlistPrompt,
-                        2 => app.state = State::HostPrompt,
+                        1 => app.restart(State::WordlistPrompt),
+                        2 => app.restart(State::HostPrompt),
                         3 => set_wordlist("quote", None, app),
                         _ => (),
                     }
@@ -143,29 +135,18 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
 
                         conn_sender.send(serde_json::to_string(&json).unwrap()).unwrap();*/
                     }
-
-
                 }
 
                 State::WordlistPrompt => app.wordlist_name.push(c),
                 State::HostPrompt => app.host_name.push(c),
-
                 State::EndScreen => {
                     match c {
                         'q' => app.should_exit = true,
-
-                        'r' => {
-                            app.restart(State::TypingGame);
-                        }
-
-                        'm' => {
-                            app.restart(State::MainMenu);
-                        }
-
+                        'r' => app.restart(State::TypingGame),
+                        'm' => app.restart(State::MainMenu),
                         _ => (),
                     }
                 }
-
                 _ => ()
             }
         }

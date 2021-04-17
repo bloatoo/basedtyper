@@ -81,7 +81,7 @@ pub fn draw_main_menu<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     }
 
 
-    main_menu[chunk.height as usize - 1] = Spans::from(format!("wordlist directory: {}", app.config.wordlist_directory.clone()));
+    main_menu[chunk.height as usize - 1] = Spans::from(format!("wordlist directory: {}", app.config.general.wordlist_directory.clone()));
 
     f.render_widget(center(main_menu), chunk);
 }
@@ -96,7 +96,12 @@ pub fn draw_waiting_screen<T: Backend>(f: &mut Frame<T>, chunk: Rect, _app: &App
 pub fn draw_host_prompt<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     let mut spans = spans(chunk.height);
 
-    spans[chunk.height as usize / 2] = Spans::from(format!("hostname (ip:port): {}", app.host_name.clone()));
+    spans[chunk.height as usize / 2] = Spans::from(vec![
+        Span::styled("hostname (ip:port): ", Style::default()
+                     .fg(Color::Blue)
+                     .add_modifier(Modifier::BOLD)), 
+        Span::raw(app.host_name.clone())
+    ]);
 
     if !app.current_error.is_empty() {
         spans[chunk.height as usize / 2 + 1] = Spans::from(Span::styled(app.current_error.clone(), Style::default().fg(Color::Red)));
@@ -108,7 +113,12 @@ pub fn draw_host_prompt<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
 pub fn draw_wordlist_prompt<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     let mut spans = spans(chunk.height);
 
-    spans[chunk.height as usize / 2] = Spans::from(format!("wordlist name: {}", app.wordlist_name.clone()));
+    spans[chunk.height as usize / 2] = Spans::from(vec![
+        Span::styled("wordlist name: ", Style::default()
+                     .fg(Color::Blue)
+                     .add_modifier(Modifier::BOLD)), 
+        Span::raw(app.wordlist_name.clone())
+    ]);
 
     if !app.current_error.is_empty() {
         spans[chunk.height as usize / 2 + 1] = Spans::from(Span::styled(app.current_error.clone(), Style::default().fg(Color::Red)));
@@ -126,9 +136,6 @@ pub fn draw_typing_game<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     if words.len() > app.chunks[0].width as usize {
         words = String::from(&words[..app.chunks[0].width as usize]);
     }
-
-    words = String::from(words.trim_start());
-
 
     let words = words
         .split("")

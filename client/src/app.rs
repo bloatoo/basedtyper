@@ -6,7 +6,7 @@ use serde_json::json;
 use crate::ui::wordlist::Wordlist;
 
 use super::config::Config;
-use std::{io, net::TcpStream, sync::mpsc::{self, Sender, Receiver}, time::Instant};
+use std::{io, net::TcpStream, path::Path, sync::mpsc::{self, Receiver}, time::Instant};
 
 pub struct App {
     pub state: State,
@@ -144,14 +144,14 @@ impl App {
         Ok(())
     }
 
-    /*pub fn locate_wordlist(&self) -> String {
-        let wordlist_name = if self.wordlist.1.ends_with(".basedtyper") {
-            self.wordlist.1.to_string()
+    pub fn locate_wordlist(&self) -> String {
+        let wordlist_name = if self.wordlist_name.ends_with(".basedtyper") {
+            self.wordlist_name.to_string()
         } else {
-            self.wordlist.1.clone() + ".basedtyper"
+            self.wordlist_name.clone() + ".basedtyper"
         };
 
-        let path_str = &(self.config.wordlist_directory.clone() + "/" + &wordlist_name);
+        let path_str = &(self.config.general.wordlist_directory.clone() + "/" + &wordlist_name);
         let path = Path::new(path_str);
 
         let path = if path.is_file() {
@@ -161,7 +161,7 @@ impl App {
         };
 
         path
-    }*/
+    }
 
     pub fn decrement_index(&mut self) {
         if self.current_index - 1 > 0 {

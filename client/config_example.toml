@@ -1,5 +1,9 @@
 # place this file in ~/.config/basedtyper/config.toml
 
+[general]
 wordlist_directory = "/home/user/.config/basedtyper/wordlists/"
 definitions = true
 cache_quotes = true
+
+[multiplayer]
+username = "bloatoo"
