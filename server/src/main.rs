@@ -15,7 +15,9 @@ fn nonblocking_stdin() -> Receiver<String> {
     });
     receiver
 }
-fn main() { let (sender, receiver) = mpsc::channel::<String>(); let input = nonblocking_stdin();
+fn main() { 
+    let (sender, receiver) = mpsc::channel::<String>();
+    let input = nonblocking_stdin();
 
     let port = std::env::args().nth(1).unwrap_or(String::from("1337"));
     let port = port.parse::<u32>().unwrap_or(1337);

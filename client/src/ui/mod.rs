@@ -21,7 +21,7 @@ pub mod wordlist;
 use utils::{center, spans};
 
 pub fn draw_end_screen<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
-    let wpm = (app.word_string.len() as f64 / 5_f64)
+    let wpm = (app.wordlist.to_string().len() as f64 / 5_f64)
         / ((app.time_taken as f64 / 1000_f64) / 60_f64);
 
     let blue = Style::default().fg(Color::Blue);
@@ -79,20 +79,7 @@ pub fn draw_main_menu<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
 
         main_menu[chunk.height as usize / 2 + idx] = span;
     }
-    
-    let height = chunk.height as usize;
 
-    if app.wordlist.0 {
-        main_menu[height / 2 + height / 4] = Spans::from(Span::raw(format!("wordlist name: {}", app.wordlist.1)));
-    }
-
-    if app.host.0 {
-        main_menu[height / 2 + height / 4] = Spans::from(Span::raw(format!("host ip and port: {}", app.host.1)));
-    }
-
-    if !app.current_error.is_empty() {
-        main_menu[height / 2 + height / 4 + 1] = Spans::from(Span::styled(app.current_error.clone(), Style::default().fg(Color::Red)));
-    }
 
     main_menu[chunk.height as usize - 1] = Spans::from(format!("wordlist directory: {}", app.config.wordlist_directory.clone()));
 
@@ -106,15 +93,35 @@ pub fn draw_waiting_screen<T: Backend>(f: &mut Frame<T>, chunk: Rect, _app: &App
     f.render_widget(center(spans), chunk);
 }
 
+pub fn draw_host_prompt<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
+    let mut spans = spans(chunk.height);
+
+    spans[chunk.height as usize / 2] = Spans::from(format!("hostname (ip:port): {}", app.host_name.clone()));
+
+    if !app.current_error.is_empty() {
+        spans[chunk.height as usize / 2 + 1] = Spans::from(Span::styled(app.current_error.clone(), Style::default().fg(Color::Red)));
+    }
+
+    f.render_widget(center(spans), chunk);
+}
+
+pub fn draw_wordlist_prompt<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
+    let mut spans = spans(chunk.height);
+
+    spans[chunk.height as usize / 2] = Spans::from(format!("wordlist name: {}", app.wordlist_name.clone()));
+
+    if !app.current_error.is_empty() {
+        spans[chunk.height as usize / 2 + 1] = Spans::from(Span::styled(app.current_error.clone(), Style::default().fg(Color::Red)));
+    }
+
+    f.render_widget(center(spans), chunk);
+}
+
 pub fn draw_typing_game<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     let mut ui_text = spans(chunk.height);
     let mut wordlist_string: Vec<Span> = Vec::new();
     
-    let mut words: String = app.words
-        .iter()
-        .map(|word| word.get_word().clone())
-        .collect::<Vec<String>>()
-        .join(" ");
+    let mut words: String = app.wordlist.to_string();
 
     if words.len() > app.chunks[0].width as usize {
         words = String::from(&words[..app.chunks[0].width as usize]);
@@ -157,7 +164,7 @@ pub fn draw_typing_game<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
 
     let index = app.input_string.split(' ').count() - 1;
 
-    let defs: Vec<&String> = app.words.iter().map(|elem| elem.get_definition()).collect();
+    let defs: Vec<String> = app.wordlist.defs();
 
     let def = if defs.len() > index {
         defs[index].clone()
@@ -174,22 +181,11 @@ pub fn draw_typing_game<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
 
 pub fn draw_ui<T: Backend>(f: &mut Frame<T>, app: &App) {
     match app.state {
-        State::MainMenu => {
-            draw_main_menu(f, app.chunks[0], app);
-        }
-
-        State::TypingGame => {
-            draw_typing_game(f, app.chunks[0], app);
-        }
-
-        State::EndScreen => {
-            draw_end_screen(f, app.chunks[0], app);
-        }
-
-        State::Waiting => {
-            draw_waiting_screen(f, app.chunks[0], app);
-        }
-
-        _ => ()
+        State::MainMenu => draw_main_menu(f, app.chunks[0], app),
+        State::TypingGame => draw_typing_game(f, app.chunks[0], app),
+        State::EndScreen => draw_end_screen(f, app.chunks[0], app),
+        State::Waiting => draw_waiting_screen(f, app.chunks[0], app),
+        State::HostPrompt => draw_host_prompt(f, app.chunks[0], app),
+        State::WordlistPrompt => draw_wordlist_prompt(f, app.chunks[0], app),
     }
 }

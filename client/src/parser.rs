@@ -1,6 +1,7 @@
 use rand::Rng;
 use serde_json::Value;
 use std::{fs, io, path::Path};
+
 #[derive(Clone)]
 pub struct Word {
     word: String,
@@ -51,10 +52,7 @@ pub fn parse_words(mode: &str, wordlist_path: Option<String>) -> Result<Vec<Word
             /*if app.config.cache_quotes {
                 let home_dir = std::env::var("HOME").unwrap();
 
-                let words_vec = app.words
-                    .iter()
-                    .map(|elem| elem.get_word().into())
-                    .collect::<Vec<String>>();
+                let words_vec = app.wordlist.words();
 
                 let word_string = words_vec.join(" ");
 

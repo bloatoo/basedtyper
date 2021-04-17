@@ -1,4 +1,4 @@
-use crate::{app::{App, State}, parser::Word};
+use crate::{app::{App, State}, ui::wordlist::Wordlist};
 use serde_json::Value;
 
 pub fn message_handler(msg: String, app: &mut App) {
@@ -8,16 +8,10 @@ pub fn message_handler(msg: String, app: &mut App) {
     match call {
         "start" => {
             let words = json["data"]["words"].as_str().unwrap();
-            let words1: Vec<&str> = words
-                .split(' ')
-                .collect();
 
-            let words = words1.clone().iter()
-                .map(|word| Word::new(word, &""))
-                .collect();
-            app.words = words;
+            let wordlist = Wordlist::from(words.to_string());
 
-            app.word_string = words1.join(" ");
+            app.wordlist = wordlist;
 
             app.restart(State::TypingGame);
         }

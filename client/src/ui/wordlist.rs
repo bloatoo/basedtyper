@@ -1,16 +1,40 @@
-//possible future implementation
-use tui::{text::{Span, Spans}, widgets::Paragraph};
 use crate::parser::Word;
-use super::utils::Render;
 
 pub struct Wordlist {
-    pub words: Vec<Word>,
-    pub current_index: usize,
+    words: Vec<Word>,
 }
 
-impl Render for Wordlist {
-    fn render(&self) -> Vec<Span> {
-        Vec::new()
+impl From<String> for Wordlist {
+    fn from(data: String) -> Self {
+        let words = data
+            .to_string()
+            .split(" ")
+            .map(|word| Word::new(word, ""))
+            .collect();
+
+        Self {
+            words,
+        }
+    }
+}
+
+impl From<Vec<Word>> for Wordlist {
+    fn from(words: Vec<Word>) -> Self {
+        Self {
+            words
+        }
+    }
+}
+
+impl ToString for Wordlist {
+    fn to_string(&self) -> String {
+        self.words
+            .iter()
+            .map(|elem| elem.get_word().clone())
+            .collect::<Vec<String>>()
+            .join(" ")
+            .trim()
+            .to_string()
     }
 }
 
@@ -18,11 +42,20 @@ impl Wordlist {
     pub fn new(words: Vec<Word>) -> Self {
         Self {
             words,
-            current_index: 1,
         }
     }
-
-    pub fn render() -> Paragraph<'static> {
-        Paragraph::new(Spans::default())
+    
+    pub fn defs(&self) -> Vec<String> {
+        self.words
+            .iter()
+            .map(|elem| elem.get_definition().clone())
+            .collect()
+    }
+    
+    pub fn words(&self) -> Vec<String> {
+        self.words
+            .iter()
+            .map(|elem| elem.get_word().clone())
+            .collect()
     }
 }

@@ -44,7 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "connect" => {
                     let host = args[1];
                     let connection = app.connect(host.to_string());
-                    if let Ok((_sender, receiver)) = connection {
+                    if let Ok(receiver) = connection {
                         connection_receiver = receiver;
                     }
                 }

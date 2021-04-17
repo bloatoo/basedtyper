@@ -2,7 +2,7 @@ use std::{sync::mpsc::Sender, time::Instant};
 
 //use serde_json::json;
 
-use crate::event::Key;
+use crate::{event::Key, parser::Word, ui::wordlist::Wordlist};
 use crate::{parser, app::{State, App}};
 
 fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
@@ -15,19 +15,30 @@ fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
 
     let words = words.unwrap();
     
-    let words_vec = words
+    let mut words_string = words
         .iter()
-        .map(|elem| (*elem).get_word().into())
-        .collect::<Vec<String>>();
-    
-    let mut word_string = words_vec.join(" ");
-   
-    if word_string.len() as u16 > app.chunks[0].width {
-        word_string = String::from(&word_string[..app.chunks[0].width as usize]);
+        .map(|word| word.get_word().clone())
+        .collect::<Vec<String>>()
+        .join(" ");
+
+    if words_string.len() as u16 > app.chunks[0].width {
+        words_string = String::from(&words_string[..app.chunks[0].width as usize]);
     }
+
+    let defs = words
+        .iter()
+        .map(|word| word.get_definition().clone())
+        .collect::<Vec<String>>();
+
+    let words: Vec<Word> = words_string
+        .split(" ")
+        .enumerate()
+        .map(|(index, item)| Word::new(item, &defs[index][..]))
+        .collect();
+
+    let wordlist = Wordlist::from(words);
  
-    app.words = words;
-    app.word_string = word_string;
+    app.wordlist = wordlist;
     app.restart(State::TypingGame);
 }
 
@@ -60,42 +71,27 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                     app.decrement_index();
                 }
 
-                State::MainMenu => {
-                    if app.wordlist.0 {
-                        app.wordlist.1.pop();
-                    } else if app.host.0 {
-                        app.host.1.pop();
-                    }
-                }
-
+                State::WordlistPrompt => { app.wordlist_name.pop(); },
+                State::HostPrompt => { app.host_name.pop(); },
                 _ => ()
             }
         }
 
         Key::Enter => {
             match app.state {
+                State::WordlistPrompt => {
+                    set_wordlist("wordlist", Some(app.wordlist_name.clone()), app);
+                }
+
+                State::HostPrompt => {
+                    sender.send(format!("connect {}", app.host_name)).unwrap();
+                }
+
                 State::MainMenu => {
                     match app.current_index {
-                        1 => {
-                            match app.wordlist.0 {
-                                true => set_wordlist("wordlist", Some(app.locate_wordlist()), app),
-
-                                false => app.wordlist.0 = true,
-                            }
-                        }
-
-                        2 => {
-                            match app.host.0 {
-                                true => {
-                                    sender.send(format!("connect {}", app.host.1)).unwrap();
-                                }
-
-                                false => app.host.0 = true,
-                            }
-                        }
-
+                        1 => app.state = State::WordlistPrompt,
+                        2 => app.state = State::HostPrompt,
                         3 => set_wordlist("quote", None, app),
-
                         _ => (),
                     }
                 }
@@ -124,12 +120,14 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                         app.timer = Some(Instant::now());
                     }
 
-                    if app.input_string.len() < app.word_string.len() {
+                    let word_string = app.wordlist.to_string();
+
+                    if app.input_string.len() < word_string.len() {
                         app.input_string.push(c);
                         app.increment_index();
                     }
 
-                    if app.input_string.trim() == app.word_string.trim() {
+                    if app.input_string.trim() == word_string {
                         app.time_taken = if app.timer.is_some() { app.timer.unwrap().elapsed().as_millis() } else { 0 };
                         app.state = State::EndScreen;
 
@@ -149,6 +147,9 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
 
                 }
 
+                State::WordlistPrompt => app.wordlist_name.push(c),
+                State::HostPrompt => app.host_name.push(c),
+
                 State::EndScreen => {
                     match c {
                         'q' => app.should_exit = true,
@@ -165,21 +166,17 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                     }
                 }
 
-                State::MainMenu => {
-                    if app.wordlist.0 {
-                        app.wordlist.1.push(c);
-                    } else if app.host.0 {
-                        app.host.1.push(c);
-                    }
-                }
-
                 _ => ()
             }
         }
 
         Key::Esc => {
-            app.should_exit = true;
+            match app.state {
+                State::MainMenu => app.should_exit = true,
+                _ => app.restart(State::MainMenu),
+            }
         }
+
         _ => ()
     }
 }
