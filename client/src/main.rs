@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let events = Events::new(1000);
 
     let mut app = App::new(terminal.size().unwrap());
-    
+
     println!("\x1b[5 q");
 
     terminal.clear().unwrap();

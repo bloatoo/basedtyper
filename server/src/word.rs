@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct Word {
     word: String,
     definition: String,

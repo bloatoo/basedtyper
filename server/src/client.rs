@@ -1,14 +1,14 @@
-use std::net::TcpStream;
+use tokio::net::tcp::OwnedWriteHalf;
 
 pub struct Client {
-    pub tcp: TcpStream,
+    pub writer: OwnedWriteHalf,
     pub username: String,
 }
 
 impl Client {
-    pub fn new(tcp: TcpStream, username: String) -> Self {
+    pub fn new(writer: OwnedWriteHalf, username: String) -> Self {
         Self {
-            tcp,
+            writer,
             username
         }
     }

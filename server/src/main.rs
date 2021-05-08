@@ -1,55 +1,59 @@
 use server::{server::Server, client::Client, handlers::input_handler};
-use std::{io::{self, Read}, net::TcpListener, sync::mpsc::Receiver, thread};
-
-use std::sync::mpsc;
+use tokio::net::TcpListener;
+use tokio::sync::mpsc::{self, *};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+//sync::mpsc::Receiver, thread};
 
 use serde_json::Value;
 
-fn nonblocking_stdin() -> Receiver<String> {
-    let (sender, receiver) = mpsc::channel();
+fn nonblocking_stdin() -> UnboundedReceiver<String> {
+    let (sender, receiver) = mpsc::unbounded_channel();
 
-    thread::spawn(move || loop {
+    std::thread::spawn(move || loop {
         let mut buf = String::new();
-        io::stdin().read_line(&mut buf).unwrap();
+        std::io::stdin().read_line(&mut buf).unwrap();
         sender.send(buf).unwrap();
     });
     receiver
 }
-fn main() { 
-    let (sender, receiver) = mpsc::channel::<String>();
-    let input = nonblocking_stdin();
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> { 
+    //let (sender, receiver) = mpsc::channel::<String>();
+    let mut input = nonblocking_stdin();
 
     let port = std::env::args().nth(1).unwrap_or(String::from("1337"));
     let port = port.parse::<u32>().unwrap_or(1337);
 
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).unwrap();
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).await.unwrap();
 
-    let mut server = Server::default();
-
-    listener.set_nonblocking(true).unwrap();
+    let server = Server::default();
 
     println!("Server started on port {}.", port);
 
+    let clients = server.clients.clone();
+    let mut server_clone = server.clone();
+    tokio::spawn(async move {
+        if let Some(data) = input.recv().await {
+            input_handler(data, &mut server_clone).await;
+        }
+    });
+
     loop {
-        if let Ok(_msg) = receiver.try_recv() {
-            
-        }
-
-        if let Ok(data) = input.try_recv() {
-            input_handler(data, &mut server);
-        }
-
-        if let Ok((mut stream, _)) = listener.accept() {
+        if let Ok((stream, _)) = listener.accept().await {
             println!("New connection: {}", stream.peer_addr().unwrap());
+            let (mut read, write) = stream.into_split();
 
-            let clients = server.clients.clone();
+            //let sender = sender.clone();
+            let clients_clone = clients.clone();
 
-            let sender = sender.clone();
-
-            std::thread::spawn(move || {
+            let mut server_clone = server.clone();
+            tokio::spawn(async move {
                 let mut buf = vec![0u8; 1024];
 
-                if let Err(e) = stream.read(&mut buf) {
+                let mut username = String::new();
+
+                if let Err(e) = read.read(&mut buf).await {
                     println!("Failed to read from stream: {}", e.to_string());
                 }
 
@@ -57,23 +61,27 @@ fn main() {
 
                 if !buf.is_empty() {
                     let message = String::from_utf8(buf).unwrap();
+                    if message.contains("username") {
+                        username = message.clone().split(' ').nth(1).unwrap().to_string();
 
-                    let json: Value = serde_json::from_str(&message).unwrap();
+                        let mut clients_lock = clients_clone.lock().await;
 
-                    let call = json["call"].as_str();
+                        clients_lock.push(Client::new(write, username.clone()));
 
-                    if let Some(call) = call {
-                        if call == "init" {
-                            let username = String::from(json["data"]["username"].as_str().unwrap_or("anonymous"));
-
-                            println!("new client with username {}", username);
-
-                            let mut clients = clients.lock().unwrap();
-                            clients.push(Client::new(stream.try_clone().unwrap(), username));
-                        }
+                        drop(clients_lock);
                     }
+                }
 
-                    sender.send(message).unwrap();
+                loop {
+                    let mut buf = vec![0u8; 1024];
+
+                    read.read(&mut buf).await.unwrap();
+
+                    buf.retain(|byte| *byte != u8::MIN);
+
+                    if !buf.is_empty() {
+                        server_clone.forward(String::from_utf8(buf).unwrap(), username.clone()).await;
+                    }
                 }
 
             });

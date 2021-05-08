@@ -1,7 +1,6 @@
 use io::{Read, Write};
 use tui::layout::{Constraint, Direction, Layout, Rect};
 use crossterm::{execute, terminal::{LeaveAlternateScreen, disable_raw_mode}};
-use serde_json::json;
 
 use crate::ui::wordlist::Wordlist;
 
@@ -83,14 +82,7 @@ impl App {
         let mut stream = stream.unwrap();
         self.state = State::Waiting;
 
-        let json = json!({
-            "call": "init",
-            "data": {
-                "username": "bloatoo",
-            }
-        });
-
-        stream.write_all(serde_json::to_string(&json).unwrap().as_bytes()).unwrap();
+        stream.write(b"username bloatoo").unwrap();
 
         std::thread::spawn(move || loop {
             let mut buf = vec![0u8; 1024];
