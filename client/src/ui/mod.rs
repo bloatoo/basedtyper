@@ -66,8 +66,8 @@ pub fn draw_main_menu<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
 
     let menu_items: Vec<String> = vec![
         String::from("wordlist"),
-        String::from("multiplayer (VERY UNSTABLE)"),
-        String::from("quote (UNSTABLE)")
+        String::from("multiplayer (UNSTABLE)"),
+        String::from("quotes")
     ];
 
     for idx in 0..3 {
@@ -79,7 +79,6 @@ pub fn draw_main_menu<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
 
         main_menu[chunk.height as usize / 2 + idx] = span;
     }
-
 
     main_menu[chunk.height as usize - 1] = Spans::from(format!("wordlist directory: {}", app.config.general.wordlist_directory.clone()));
 
@@ -156,8 +155,8 @@ pub fn draw_typing_game<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     }
 
     f.set_cursor(
-        chunk.x + (chunk.width as f32 / 2.0).round() as u16 + app.current_index as u16
-            - (words.len() as f32 / 2.0).round() as u16,
+        chunk.x + (chunk.width as f32 / 2.0).ceil() as u16 + app.current_index as u16
+            - (words.len() as f32 / 2.0).ceil() as u16,
         chunk.y + chunk.height / 2
     );
 
