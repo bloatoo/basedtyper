@@ -69,8 +69,7 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                     app.decrement_index();
                 }
 
-                State::WordlistPrompt => { app.wordlist_name.pop(); },
-                State::HostPrompt => { app.host_name.pop(); },
+                State::WordlistPrompt | State::HostPrompt => { app.input_string.pop(); },
                 _ => ()
             }
         }
@@ -78,7 +77,7 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
         Key::Enter => {
             match app.state {
                 State::WordlistPrompt => set_wordlist("wordlist", Some(app.locate_wordlist()), app),
-                State::HostPrompt => sender.send(format!("connect {}", app.host_name)).unwrap(),
+                State::HostPrompt => sender.send(format!("connect {}", app.input_string)).unwrap(),
                 State::MainMenu => {
                     match app.current_index {
                         1 => app.restart(State::WordlistPrompt),
@@ -137,8 +136,7 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                     }
                 }
 
-                State::WordlistPrompt => app.wordlist_name.push(c),
-                State::HostPrompt => app.host_name.push(c),
+                State::WordlistPrompt | State::HostPrompt => app.input_string.push(c),
                 State::EndScreen => {
                     match c {
                         'q' => app.should_exit = true,

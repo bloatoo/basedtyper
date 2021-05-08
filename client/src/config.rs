@@ -32,7 +32,7 @@ impl Config {
 
         let data: Result<Config, _> = toml::from_str(&file_contents.unwrap());
 
-        if let Err(err) = data {
+        if let Err(_err) = data {
             return Ok(Config::default());
         }
 

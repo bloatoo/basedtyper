@@ -17,9 +17,6 @@ pub struct App {
     pub current_error: String,
     pub should_exit: bool,
     pub wordlist: Wordlist,
-    pub wordlist_name: String,
-    pub host_name: String,
-    pub host: (bool, String),
     pub chunks: Vec<Rect>,
 }
 
@@ -58,9 +55,6 @@ impl App {
             current_error: err,
             should_exit: false,
             wordlist: Wordlist::new(Vec::new()),
-            wordlist_name: String::new(),
-            host_name: String::new(),
-            host: (false, String::new()),
             chunks,
         }
     }
@@ -113,7 +107,6 @@ impl App {
         self.current_index = 1;
         self.time_taken = 0;
         self.current_error = String::new();
-        self.host_name = String::new();
 
         match state {
             State::TypingGame => {
@@ -137,10 +130,10 @@ impl App {
     }
 
     pub fn locate_wordlist(&self) -> String {
-        let wordlist_name = if self.wordlist_name.ends_with(".basedtyper") {
-            self.wordlist_name.to_string()
+        let wordlist_name = if self.input_string.ends_with(".basedtyper") {
+            self.input_string.to_string()
         } else {
-            self.wordlist_name.clone() + ".basedtyper"
+            self.input_string.clone() + ".basedtyper"
         };
 
         let path_str = &(self.config.general.wordlist_directory.clone() + "/" + &wordlist_name);

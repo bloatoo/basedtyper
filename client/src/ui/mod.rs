@@ -100,7 +100,7 @@ pub fn draw_host_prompt<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
         Span::styled("hostname (ip:port): ", Style::default()
                      .fg(Color::Blue)
                      .add_modifier(Modifier::BOLD)), 
-        Span::raw(app.host_name.clone())
+        Span::raw(app.input_string.clone())
     ]);
 
     if !app.current_error.is_empty() {
@@ -117,7 +117,7 @@ pub fn draw_wordlist_prompt<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App
         Span::styled("wordlist name: ", Style::default()
                      .fg(Color::Blue)
                      .add_modifier(Modifier::BOLD)), 
-        Span::raw(app.wordlist_name.clone())
+        Span::raw(app.input_string.clone())
     ]);
 
     if !app.current_error.is_empty() {
