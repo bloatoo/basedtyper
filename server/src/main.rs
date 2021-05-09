@@ -66,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if !buf.is_empty() {
                     let message = String::from_utf8(buf).unwrap();
 
-                    if let Message::Join(data) = Message::from(message.clone()) {
+                    if let Message::Join(data) = Message::from(message.clone().as_str()) {
                         username = data.username;
 
                         let mut clients_lock = clients_clone.lock().await;

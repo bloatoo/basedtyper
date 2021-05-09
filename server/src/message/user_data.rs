@@ -8,8 +8,22 @@ pub enum Color {
     Unknown,
 }
 
-impl<T: ToString> From<T> for Color {
-    fn from(data: T) -> Self {
+impl ToString for Color {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Red => "red",
+            Self::Green => "green",
+            Self::Yellow => "yellow",
+            Self::Blue => "blue",
+            Self::Magenta => "magenta",
+            Self::Cyan => "cyan",
+            Self::Unknown => "white"
+        }.to_string()
+    }
+}
+
+impl<'a> From<&'a str> for Color {
+    fn from(data: &'a str) -> Self {
         match data.to_string().as_str() {
             "red" => Color::Red,
             "green" => Color::Green,
@@ -21,6 +35,7 @@ impl<T: ToString> From<T> for Color {
         }
     }
 }
+
 pub struct UserData {
     pub username: String,
     pub color: Color,

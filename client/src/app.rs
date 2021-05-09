@@ -1,10 +1,9 @@
 use io::{Read, Write};
-use serde_json::json;
 use std::sync::Arc;
 use tui::layout::{Constraint, Direction, Layout, Rect};
 use crossterm::{execute, terminal::{LeaveAlternateScreen, disable_raw_mode}};
 
-use crate::ui::wordlist::Wordlist;
+use crate::{handlers::message::{Message, UserData}, ui::wordlist::Wordlist};
 
 use super::config::Config;
 use std::{io, net::TcpStream, path::Path, sync::{Mutex, mpsc::{self, Receiver}}, time::Instant};
@@ -90,15 +89,12 @@ impl App {
         let stream_clone = stream.try_clone().unwrap();
         self.state = State::Waiting;
 
-        let json = json!({
-            "call": "join",
-            "data": {
-                "username": self.config.multiplayer.username,
-                "color": self.config.multiplayer.color,
-            }
-        });
+        let username = self.config.multiplayer.username.clone();
+        let color = self.config.multiplayer.color.clone();
 
-        stream.write(json.to_string().as_bytes()).unwrap();
+        let join_message = Message::Join(UserData::new(username, color));
+
+        stream.write(join_message.to_string().as_bytes()).unwrap();
 
         std::thread::spawn(move || loop {
             let mut buf = vec![0u8; 1024];

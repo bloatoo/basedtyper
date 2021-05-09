@@ -1,12 +1,9 @@
 use std::io::Write;
 use std::{sync::mpsc::Sender, time::Instant};
-
-//use serde_json::json;
-
-use serde_json::{Value, json};
-
 use crate::{event::Key, parser::Word, ui::wordlist::Wordlist};
 use crate::{parser, app::{State, App}};
+
+use super::message::Message;
 
 fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
     let words = parser::parse_words(mode.to_string().as_str(), wordlist_path);
@@ -61,6 +58,7 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                         app.increment_index();
                     }
                 }
+
                 _ => ()
             }
         }
@@ -72,7 +70,10 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                     app.decrement_index();
                 }
 
-                State::WordlistPrompt | State::HostPrompt => { app.input_string.pop(); },
+                State::WordlistPrompt | State::HostPrompt => {
+                    app.input_string.pop();
+                },
+
                 _ => ()
             }
         }
@@ -109,6 +110,7 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                                     app.close_connection();
                                     app.restart(State::MainMenu);
                                 }
+
                                 None => app.restart(State::MainMenu), 
                             }
                             
@@ -135,8 +137,11 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
 
                         if let Some(val) = app.connection.clone() {
                             let mut sock_lock = val.lock().unwrap();
+
+                            let message = Message::Keypress.to_string();
+
                             if app.input_string.trim() != word_string {
-                                sock_lock.write(b"{\"call\":\"keypress\"}\n").unwrap();
+                                sock_lock.write(message.as_bytes()).unwrap();
                             }
 
                             drop(sock_lock);
@@ -150,24 +155,19 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                         match app.connection.clone() {
                             Some(conn) => {
                                 app.state = State::MultiplayerEndScreen;
+
                                 let mut conn_lock = conn.lock().unwrap();
-                                conn_lock.write(b"{\"call\":\"finished\"}").unwrap();
+
+                                let wpm = (app.wordlist.to_string().len() as f64 / 5_f64)
+                                    / ((app.time_taken as f64 / 1000_f64) / 60_f64);
+
+                                let message = Message::Finished(wpm).to_string();
+
+                                conn_lock.write(message.as_bytes()).unwrap();
                             }
+
                             None => app.state = State::EndScreen,
                         }
-                        
-
-                        /*let wpm = (app.word_string.len() as f64 / 5_f64)
-                            / ((app.time_taken as f64 / 1000_f64) / 60_f64);
-
-                        let json = json!({
-                            "call": "finish",
-                            "data": {
-                                "wpm": wpm,
-                            }
-                        });
-
-                        conn_sender.send(serde_json::to_string(&json).unwrap()).unwrap();*/
                     }
                 }
 
@@ -176,10 +176,12 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                 State::MultiplayerEndScreen => {
                     match c {
                         'q' => {
-                            let sock= app.connection.clone().unwrap();
+                            let sock = app.connection.clone().unwrap();
                             let sock_lock = sock.lock().unwrap();
+
                             sock_lock.shutdown(std::net::Shutdown::Both).unwrap();
                             drop(sock_lock);
+
                             app.connection = None;
                             app.restart(State::MainMenu);
                         }

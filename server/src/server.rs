@@ -1,7 +1,6 @@
 use std::sync::Arc;
-use serde_json::{Value, json};
 use tokio::sync::Mutex;
-use crate::message::Message;
+use crate::message::{Forwardable, Message};
 
 use super::client::Client;
 use super::word::Word;
@@ -35,34 +34,22 @@ impl Server {
     }
 
     pub async fn process_message(&mut self, message_string: String, username: String) {
-        match Message::from(message_string.clone()) {
+        match Message::from(message_string.clone().as_str()) {
             Message::Keypress => {
-                let message: Value = json!({
-                    "call": "keypress",
-                    "username": username,
-                });
-
-                self.forward(message.to_string(), username).await;
+                let msg = Message::Keypress.forwardable(username.clone());
+                self.forward(msg, username).await;
             }
 
-            Message::Finished => {
-                println!("{} finished", username);
+            Message::Finished(wpm) => {
+                let msg = Message::Finished(wpm).forwardable(username.clone());
+                println!("{} finished with {} as their WPM", username.clone(), wpm);
+                self.forward(msg, username).await;
             }
 
             _ => println!("invalid message: {}", message_string)
         }
     }
 
-    /*pub async fn construct_message<T: ToString>(&self, call: String, username: String, data: T) -> Value {
-        json!({
-            "call": call,
-            "username": username,
-            "data": data.to_string(),
-        })
-    }*/
-
-    /*pub async fn validate_message(message: String) -> Result<Message, Box<dyn std::error::Error>> {
-    }*/
     pub async fn forward(&mut self, data: String, username: String) {
         let mut clients = self.clients.lock().await;
 
