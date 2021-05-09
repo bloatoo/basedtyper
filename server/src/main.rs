@@ -1,4 +1,4 @@
-use server::{server::Server, client::Client, handlers::input_handler};
+use server::{client::Client, handlers::input_handler, message::Message, server::Server};
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::{self, *};
 use tokio::io::AsyncReadExt;
@@ -10,7 +10,9 @@ fn nonblocking_stdin() -> UnboundedReceiver<String> {
     std::thread::spawn(move || loop {
         let mut buf = String::new();
         std::io::stdin().read_line(&mut buf).unwrap();
-        sender.send(buf).unwrap();
+        if let Err(e) = sender.send(buf) {
+            println!("{}", e);
+        }
     });
     receiver
 }
@@ -30,16 +32,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Server started on port {}.", port);
 
     let clients = server.clients.clone();
+
     let mut server_clone = server.clone();
+
     tokio::spawn(async move {
-        if let Some(data) = input.recv().await {
-            input_handler(data, &mut server_clone).await;
+        loop {
+            if let Some(data) = input.recv().await {
+                input_handler(data, &mut server_clone).await;
+            }
         }
     });
 
     loop {
         if let Ok((stream, _)) = listener.accept().await {
-            println!("New connection: {}", stream.peer_addr().unwrap());
+            //println!("New connection: {}", stream.peer_addr().unwrap());
             let (mut read, write) = stream.into_split();
 
             //let sender = sender.clone();
@@ -59,12 +65,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 if !buf.is_empty() {
                     let message = String::from_utf8(buf).unwrap();
-                    if message.contains("username") {
-                        username = message.clone().split(' ').nth(1).unwrap().to_string();
+
+                    if let Message::Join(data) = Message::from(message.clone()) {
+                        username = data.username;
 
                         let mut clients_lock = clients_clone.lock().await;
-
                         clients_lock.push(Client::new(write, username.clone()));
+                        println!("New player with username {}", username);
 
                         drop(clients_lock);
                     }
@@ -78,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     buf.retain(|byte| *byte != u8::MIN);
 
                     if !buf.is_empty() {
-                        println!("{}", String::from_utf8(buf.clone()).unwrap());
+                        server_clone.process_message(String::from_utf8(buf.clone()).unwrap(), username.clone()).await;
                         server_clone.forward(String::from_utf8(buf).unwrap(), username.clone()).await;
                     }
                 }

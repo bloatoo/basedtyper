@@ -1,4 +1,5 @@
 use io::{Read, Write};
+use serde_json::json;
 use std::sync::Arc;
 use tui::layout::{Constraint, Direction, Layout, Rect};
 use crossterm::{execute, terminal::{LeaveAlternateScreen, disable_raw_mode}};
@@ -89,7 +90,15 @@ impl App {
         let stream_clone = stream.try_clone().unwrap();
         self.state = State::Waiting;
 
-        stream.write(b"username bloatoo").unwrap();
+        let json = json!({
+            "call": "join",
+            "data": {
+                "username": self.config.multiplayer.username,
+                "color": self.config.multiplayer.color,
+            }
+        });
+
+        stream.write(json.to_string().as_bytes()).unwrap();
 
         std::thread::spawn(move || loop {
             let mut buf = vec![0u8; 1024];

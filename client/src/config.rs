@@ -11,6 +11,7 @@ pub struct Config {
 #[derive(Deserialize)]
 pub struct MultiplayerOptions {
     pub username: String,
+    pub color: String,
 }
 
 #[derive(Deserialize)]
@@ -51,6 +52,7 @@ impl Config {
         Self {
             multiplayer: MultiplayerOptions {
                 username: String::from("anonymous"),
+                color: String::from("yellow")
             }, 
 
             general: GeneralOptions {

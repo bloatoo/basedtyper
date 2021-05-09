@@ -1,9 +1,18 @@
 # place this file in ~/.config/basedtyper/config.toml
 
 [general]
+# the directory for storing wordlists
 wordlist_directory = "/home/user/.config/basedtyper/wordlists/"
+
+# displays definitions for words
 definitions = true
+
+# caches quotes so they can be used offline
 cache_quotes = true
 
 [multiplayer]
-username = "bloatoo"
+# username displayed in multiplayer games
+username = "anonymous"
+
+# color displayed in multiplayer games (red, green, yellow, blue, magenta, cyan
+color = "yellow" 

@@ -7,7 +7,7 @@ pub fn connection_handler(mut stream: TcpStream, sender: Sender<String>) {
         let mut buf = vec![0_u8; 1024];
 
         if stream.read(&mut buf).is_err() {
-             println!("failed to read from server");
+            println!("failed to read from server");
         }
 
         buf.retain(|byte| byte != &u8::MIN);

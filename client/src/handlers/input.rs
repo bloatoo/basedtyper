@@ -3,6 +3,8 @@ use std::{sync::mpsc::Sender, time::Instant};
 
 //use serde_json::json;
 
+use serde_json::{Value, json};
+
 use crate::{event::Key, parser::Word, ui::wordlist::Wordlist};
 use crate::{parser, app::{State, App}};
 
@@ -133,7 +135,9 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
 
                         if let Some(val) = app.connection.clone() {
                             let mut sock_lock = val.lock().unwrap();
-                            sock_lock.write(b"keypress").unwrap();
+                            if app.input_string.trim() != word_string {
+                                sock_lock.write(b"{\"call\":\"keypress\"}\n").unwrap();
+                            }
 
                             drop(sock_lock);
                         }
@@ -144,7 +148,11 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                     if app.input_string.trim() == word_string {
                         app.time_taken = if app.timer.is_some() { app.timer.unwrap().elapsed().as_millis() } else { 0 };
                         match app.connection.clone() {
-                            Some(_) => app.state = State::MultiplayerEndScreen,
+                            Some(conn) => {
+                                app.state = State::MultiplayerEndScreen;
+                                let mut conn_lock = conn.lock().unwrap();
+                                conn_lock.write(b"{\"call\":\"finished\"}").unwrap();
+                            }
                             None => app.state = State::EndScreen,
                         }
                         
