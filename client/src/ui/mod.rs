@@ -126,6 +126,28 @@ pub fn draw_wordlist_prompt<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App
     f.render_widget(center(spans), chunk);
 }
 
+pub fn draw_multiplayer_end_screen<T: Backend>(f: &mut Frame<T>, chunk: Rect, _app: &App) {
+    let mut ui_text = spans(chunk.height);
+
+    let spans = vec![
+        Spans::from(Span::styled("waiting for server...", Style::default().add_modifier(Modifier::BOLD).fg(Color::Blue))),
+        Spans::default(),
+        Spans::default(),
+        Spans::default(),
+        Spans::from(vec![
+            Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(" to quit")
+        ])
+    ];
+
+    for (idx, span) in spans.iter().enumerate() {
+        ui_text[chunk.height as usize / 2 + idx] = span.clone(); 
+    }
+
+    f.render_widget(center(ui_text), chunk);
+
+}
+
 pub fn draw_typing_game<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     let mut ui_text = spans(chunk.height);
     let mut wordlist_string: Vec<Span> = Vec::new();
@@ -193,5 +215,6 @@ pub fn draw_ui<T: Backend>(f: &mut Frame<T>, app: &App) {
         State::Waiting => draw_waiting_screen(f, app.chunks[0], app),
         State::HostPrompt => draw_host_prompt(f, app.chunks[0], app),
         State::WordlistPrompt => draw_wordlist_prompt(f, app.chunks[0], app),
+        State::MultiplayerEndScreen => draw_multiplayer_end_screen(f, app.chunks[0], app),
     }
 }

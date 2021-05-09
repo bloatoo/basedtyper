@@ -5,7 +5,7 @@ use basedtyper::{
     ui,
 };
 
-use std::{io, sync::mpsc};
+use std::{io, sync::{Arc, Mutex, mpsc}};
 
 use crossterm::{ExecutableCommand, terminal::{enable_raw_mode, EnterAlternateScreen}};
 
@@ -44,8 +44,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "connect" => {
                     let host = args[1];
                     let connection = app.connect(host.to_string());
-                    if let Ok(receiver) = connection {
-                        connection_receiver = receiver;
+                    if let Ok(conn) = connection {
+                        connection_receiver = conn.1;
+                        app.connection = Some(Arc::new(Mutex::new(conn.0)));
                     }
                 }
 

@@ -78,6 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     buf.retain(|byte| *byte != u8::MIN);
 
                     if !buf.is_empty() {
+                        println!("{}", String::from_utf8(buf.clone()).unwrap());
                         server_clone.forward(String::from_utf8(buf).unwrap(), username.clone()).await;
                     }
                 }

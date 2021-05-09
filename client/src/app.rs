@@ -1,11 +1,12 @@
 use io::{Read, Write};
+use std::sync::Arc;
 use tui::layout::{Constraint, Direction, Layout, Rect};
 use crossterm::{execute, terminal::{LeaveAlternateScreen, disable_raw_mode}};
 
 use crate::ui::wordlist::Wordlist;
 
 use super::config::Config;
-use std::{io, net::TcpStream, path::Path, sync::mpsc::{self, Receiver}, time::Instant};
+use std::{io, net::TcpStream, path::Path, sync::{Mutex, mpsc::{self, Receiver}}, time::Instant};
 
 pub struct App {
     pub state: State,
@@ -13,6 +14,7 @@ pub struct App {
     pub input_string: String,
     pub time_taken: u128,
     pub timer: Option<Instant>,
+    pub connection: Option<Arc<Mutex<TcpStream>>>,
     pub current_index: usize,
     pub current_error: String,
     pub should_exit: bool,
@@ -22,6 +24,7 @@ pub struct App {
 
 pub enum State {
     MainMenu,
+    MultiplayerEndScreen,
     EndScreen,
     Waiting,
     TypingGame,
@@ -53,6 +56,7 @@ impl App {
             current_index: 1,
             config,
             current_error: err,
+            connection: None,
             should_exit: false,
             wordlist: Wordlist::new(Vec::new()),
             chunks,
@@ -62,8 +66,16 @@ impl App {
     pub fn set_state(&mut self, state: State) {
         self.state = state;
     }
+    
+    pub fn close_connection(&mut self) {
+        let conn = self.connection.clone().unwrap();
+        let conn_lock = conn.lock().unwrap();
+        conn_lock.shutdown(std::net::Shutdown::Both).unwrap();
+        drop(conn_lock);
+        self.connection = None;
+    }
 
-    pub fn connect(&mut self, host: String) -> Result<Receiver<String>, std::io::Error> {
+    pub fn connect(&mut self, host: String) -> Result<(TcpStream, Receiver<String>), std::io::Error> {
         let stream = TcpStream::connect(host);
 
         if let Err(e) = stream {
@@ -74,6 +86,7 @@ impl App {
         let (connection_sender, connection_receiver) = mpsc::channel::<String>();
 
         let mut stream = stream.unwrap();
+        let stream_clone = stream.try_clone().unwrap();
         self.state = State::Waiting;
 
         stream.write(b"username bloatoo").unwrap();
@@ -93,7 +106,7 @@ impl App {
             }
         });
 
-        Ok(connection_receiver)
+        Ok((stream_clone, connection_receiver))
     }
 
     /*pub fn send_conn(&mut self, data: String) {
