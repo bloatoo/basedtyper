@@ -1,6 +1,7 @@
 use std::sync::Arc;
+use serde_json::{Value, json};
 use tokio::sync::Mutex;
-use crate::message::{Forwardable, Message};
+use crate::message::{Color, Forwardable, Message, UserData};
 
 use super::client::Client;
 use super::word::Word;
@@ -18,6 +19,20 @@ impl Server {
             clients: Arc::new(Mutex::new(Vec::new())),
             words: Vec::new(),
         }
+    }
+
+    pub async fn create_init_message(&self) -> String {
+        let data = self.clients.lock().await.iter().map(|client| {
+            serde_json::from_str(&UserData::new(client.username.clone(), Color::from(&client.color[..])).to_string()[..]).unwrap()
+        }).collect::<Vec<Value>>();
+
+        let data = json!({
+            "call": "init",
+            "data": {
+                "players": Value::Array(data)
+            }
+        }).to_string();
+        data
     }
 
     pub async fn broadcast(&mut self, data: String) {
@@ -54,9 +69,13 @@ impl Server {
         let mut clients = self.clients.lock().await;
 
         for i in 0..clients.len() {
+            if i >= clients.len() {
+                continue;
+            }
+
             let client = &mut clients[i];
             if client.username != username {
-                if let Err(e) = client.writer.write(data.as_bytes()).await {
+                if let Err(e) = client.writer.write(data.to_string().as_bytes()).await {
                     clients.remove(i);
                     println!("error: {}", e);
                 }

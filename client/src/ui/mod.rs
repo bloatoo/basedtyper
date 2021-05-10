@@ -204,6 +204,13 @@ pub fn draw_typing_game<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     ui_text[chunk.height as usize / 3] = Spans::from(def);
     ui_text[chunk.height as usize / 2] = Spans::from(wordlist_string);
 
+    if app.connection.enabled {
+        app.connection.players.iter().enumerate().for_each(|(idx, player)| {
+            ui_text[chunk.height as usize / 2 + idx] = Spans::from(Span::raw(player.username.clone()));
+            ui_text[chunk.height as usize / 2 + idx * 2] = Spans::from(Span::raw("-".repeat(player.pos)));
+        });
+    }
+
     f.render_widget(Paragraph::new(ui_text).alignment(Alignment::Center), chunk);
 }
 

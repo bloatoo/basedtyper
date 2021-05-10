@@ -39,9 +39,10 @@ impl ToString for Message {
     }
 }
 
+#[derive(Debug)]
 pub struct UserData {
-    username: String,
-    color: String,
+    pub username: String,
+    pub color: String,
 }
 
 impl UserData {

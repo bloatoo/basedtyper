@@ -1,3 +1,6 @@
+use serde_json::json;
+
+#[derive(Clone)]
 pub enum Color {
     Red,
     Green,
@@ -44,5 +47,14 @@ pub struct UserData {
 impl UserData {
     pub fn new(username: String, color: Color) -> Self {
         Self { username, color }
+    }
+}
+
+impl ToString for UserData {
+    fn to_string(&self) -> String {
+        json!({
+            "username": self.username,
+            "color": self.color.to_string(),
+        }).to_string()
     }
 }

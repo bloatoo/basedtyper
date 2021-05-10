@@ -1,11 +1,11 @@
 use basedtyper::{
     event::*,
-    app::App,
+    app::{Connection, App},
     handlers::{message_handler, input_handler},
     ui,
 };
 
-use std::{io, sync::{Arc, Mutex, mpsc}};
+use std::{io, sync::mpsc};
 
 use crossterm::{ExecutableCommand, terminal::{enable_raw_mode, EnterAlternateScreen}};
 
@@ -32,6 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         if let Ok(msg) = connection_receiver.try_recv() {
+            app.connection.enabled = true;
             message_handler(msg, &mut app);
         }
 
@@ -46,7 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let connection = app.connect(host.to_string());
                     if let Ok(conn) = connection {
                         connection_receiver = conn.1;
-                        app.connection = Some(Arc::new(Mutex::new(conn.0)));
+                        app.connection = Connection::new(conn.0);
                     }
                 }
 

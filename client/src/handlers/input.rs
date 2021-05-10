@@ -99,19 +99,19 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                 State::TypingGame => {
                     match c {
                         'r' => {
-                            match app.connection.clone() {
-                                Some(_) => (),
-                                None => app.restart(State::TypingGame),
+                            match app.connection.enabled {
+                                true => (),
+                                false => app.restart(State::TypingGame),
                             }
                         }
                         'c' => {
-                            match app.connection.clone() {
-                                Some(_) => {
+                            match app.connection.enabled {
+                                true => {
                                     app.close_connection();
                                     app.restart(State::MainMenu);
                                 }
 
-                                None => app.restart(State::MainMenu), 
+                                false => app.restart(State::MainMenu), 
                             }
                             
                         }
@@ -135,8 +135,9 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                     if app.input_string.len() < word_string.len() {
                         app.input_string.push(c);
 
-                        if let Some(val) = app.connection.clone() {
-                            let mut sock_lock = val.lock().unwrap();
+                        if app.connection.enabled {
+                            let sock = app.connection.tcp.clone().unwrap();
+                            let mut sock_lock = sock.lock().unwrap();
 
                             let message = Message::Keypress.to_string();
 
@@ -152,21 +153,22 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
 
                     if app.input_string.trim() == word_string {
                         app.time_taken = if app.timer.is_some() { app.timer.unwrap().elapsed().as_millis() } else { 0 };
-                        match app.connection.clone() {
-                            Some(conn) => {
+                        match app.connection.enabled {
+                            true => {
                                 app.state = State::MultiplayerEndScreen;
 
-                                let mut conn_lock = conn.lock().unwrap();
+                                let sock = app.connection.tcp.clone().unwrap();
+                                let mut sock_lock = sock.lock().unwrap();
 
                                 let wpm = (app.wordlist.to_string().len() as f64 / 5_f64)
                                     / ((app.time_taken as f64 / 1000_f64) / 60_f64);
 
                                 let message = Message::Finished(wpm).to_string();
 
-                                conn_lock.write(message.as_bytes()).unwrap();
+                                sock_lock.write(message.as_bytes()).unwrap();
                             }
 
-                            None => app.state = State::EndScreen,
+                            false => app.state = State::EndScreen,
                         }
                     }
                 }
@@ -176,13 +178,7 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                 State::MultiplayerEndScreen => {
                     match c {
                         'q' => {
-                            let sock = app.connection.clone().unwrap();
-                            let sock_lock = sock.lock().unwrap();
-
-                            sock_lock.shutdown(std::net::Shutdown::Both).unwrap();
-                            drop(sock_lock);
-
-                            app.connection = None;
+                            app.close_connection();
                             app.restart(State::MainMenu);
                         }
                         _ => ()

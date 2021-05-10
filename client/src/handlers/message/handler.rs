@@ -1,19 +1,11 @@
-use crate::{app::{App, State}, ui::wordlist::Wordlist};
-use serde_json::Value;
+use crate::{app::{App, Player, State}, ui::wordlist::Wordlist};
+use super::ServerMessage::{self, *};
 
-pub fn message_handler(msg: String, app: &mut App) {
-    let json: Result<Value, _> = serde_json::from_str(&msg);
-    if let Err(_e) = json {
-        return;
-    }
+pub fn message_handler(msg_string: String, app: &mut App) {
+    let msg = ServerMessage::from(msg_string.clone());
 
-    let json = json.unwrap();
-    let call = json["call"].as_str().unwrap();
-
-    match call {
-        "start" => {
-            let words = json["data"]["words"].as_str().unwrap();
-
+    match msg {
+        Start(words) => {
             let wordlist = Wordlist::from(words.to_string());
 
             app.wordlist = wordlist;
@@ -21,6 +13,24 @@ pub fn message_handler(msg: String, app: &mut App) {
             app.restart(State::TypingGame);
         }
 
-        _ => ()
+        Init(data) => {
+            let mut data: Vec<Player> = data.iter().map(|p| Player::new(p.username.clone(), p.color.clone())).collect();
+            app.set_players(&mut data);
+        }
+
+        Keypress(username) => {
+            let player = app.connection.players.iter_mut().find(|p| p.username == username).unwrap();
+            player.pos += 1;
+        }
+
+        Join(data) => {
+            app.connection.players.push(Player::new(data.username, data.color));
+        }
+
+        Finished(username) => {
+            app.connection.players.iter_mut().find(|p| p.username == username).unwrap().finished = true;
+        }
+
+        _ => panic!("unknown message, {:#?}", msg_string)
     }
 }

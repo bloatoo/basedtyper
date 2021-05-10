@@ -6,12 +6,14 @@ pub struct Client {
     pub input_correct: bool,
     pub input_len: u16,
     pub username: String,
+    pub color: String,
 }
 
 impl Client {
-    pub fn new(writer: OwnedWriteHalf, username: String) -> Self {
+    pub fn new(writer: OwnedWriteHalf, username: String, color: String) -> Self {
         Self {
             writer,
+            color,
             finished: false,
             input_correct: true,
             input_len: 0,

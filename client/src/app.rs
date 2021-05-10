@@ -1,4 +1,4 @@
-use io::{Read, Write};
+    use io::{Read, Write};
 use std::sync::Arc;
 use tui::layout::{Constraint, Direction, Layout, Rect};
 use crossterm::{execute, terminal::{LeaveAlternateScreen, disable_raw_mode}};
@@ -8,13 +8,57 @@ use crate::{handlers::message::{Message, UserData}, ui::wordlist::Wordlist};
 use super::config::Config;
 use std::{io, net::TcpStream, path::Path, sync::{Mutex, mpsc::{self, Receiver}}, time::Instant};
 
+#[derive(Clone)]
+pub struct Connection {
+    pub tcp: Option<Arc<Mutex<TcpStream>>>,
+    pub enabled: bool,
+    pub players: Vec<Player>
+}
+
+impl Connection {
+    pub fn new(stream: TcpStream) -> Self {
+        Self {
+            tcp: Some(Arc::new(Mutex::new(stream))),
+            enabled: false,
+            players: vec![],
+        }
+    }
+
+    pub fn none() -> Self {
+        Self {
+            tcp: None,
+            enabled: false,
+            players: vec![],
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Player {
+    pub pos: usize,
+    pub username: String,
+    pub color: String, //Color
+    pub finished: bool,
+}
+
+impl Player {
+    pub fn new(username: String, color: String) -> Self {
+        Self {
+            pos: 0,
+            color,
+            username,
+            finished: false,
+        }
+    }
+}
+
 pub struct App {
     pub state: State,
     pub config: Config,
     pub input_string: String,
     pub time_taken: u128,
     pub timer: Option<Instant>,
-    pub connection: Option<Arc<Mutex<TcpStream>>>,
+    pub connection: Connection,
     pub current_index: usize,
     pub current_error: String,
     pub should_exit: bool,
@@ -56,23 +100,26 @@ impl App {
             current_index: 1,
             config,
             current_error: err,
-            connection: None,
+            connection: Connection::none(),
             should_exit: false,
             wordlist: Wordlist::new(Vec::new()),
             chunks,
         }
     }
 
+    pub fn set_players(&mut self, players: &mut Vec<Player>) {
+        self.connection.players.append(players);
+    }
     pub fn set_state(&mut self, state: State) {
         self.state = state;
     }
     
     pub fn close_connection(&mut self) {
-        let conn = self.connection.clone().unwrap();
-        let conn_lock = conn.lock().unwrap();
-        conn_lock.shutdown(std::net::Shutdown::Both).unwrap();
-        drop(conn_lock);
-        self.connection = None;
+        let sock = self.connection.tcp.clone().unwrap();
+        let sock_lock = sock.lock().unwrap();
+        sock_lock.shutdown(std::net::Shutdown::Both).unwrap();
+        drop(sock_lock);
+        self.connection.enabled = false;
     }
 
     pub fn connect(&mut self, host: String) -> Result<(TcpStream, Receiver<String>), std::io::Error> {
@@ -110,6 +157,7 @@ impl App {
                 connection_sender.send(data).unwrap();
             }
         });
+
 
         Ok((stream_clone, connection_receiver))
     }
