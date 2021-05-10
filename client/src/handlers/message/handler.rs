@@ -1,7 +1,7 @@
 use crate::{app::{App, Player, State}, ui::wordlist::Wordlist};
 use super::ServerMessage::{self, *};
 
-pub fn message_handler(msg_string: String, app: &mut App) {
+pub async fn message_handler(msg_string: String, app: &mut App) {
     let msg = ServerMessage::from(msg_string.clone());
 
     match msg {

@@ -1,22 +1,31 @@
-    use io::{Read, Write};
 use std::sync::Arc;
 use tui::layout::{Constraint, Direction, Layout, Rect};
 use crossterm::{execute, terminal::{LeaveAlternateScreen, disable_raw_mode}};
 
 use crate::{handlers::message::{Message, UserData}, ui::wordlist::Wordlist};
 
+use tokio::net::{TcpStream, tcp::OwnedWriteHalf};
+use tokio::sync::Mutex;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
 use super::config::Config;
-use std::{io, net::TcpStream, path::Path, sync::{Mutex, mpsc::{self, Receiver}}, time::Instant};
+
+use std::{
+    io,
+    path::Path,
+    sync::mpsc::{self, Receiver},
+    time::Instant
+};
 
 #[derive(Clone)]
 pub struct Connection {
-    pub tcp: Option<Arc<Mutex<TcpStream>>>,
+    pub tcp: Option<Arc<Mutex<OwnedWriteHalf>>>,
     pub enabled: bool,
     pub players: Vec<Player>
 }
 
 impl Connection {
-    pub fn new(stream: TcpStream) -> Self {
+    pub fn new(stream: OwnedWriteHalf) -> Self {
         Self {
             tcp: Some(Arc::new(Mutex::new(stream))),
             enabled: false,
@@ -114,16 +123,13 @@ impl App {
         self.state = state;
     }
     
-    pub fn close_connection(&mut self) {
-        let sock = self.connection.tcp.clone().unwrap();
-        let sock_lock = sock.lock().unwrap();
-        sock_lock.shutdown(std::net::Shutdown::Both).unwrap();
-        drop(sock_lock);
+    pub async fn close_connection(&mut self) {
+        self.connection.tcp = None;
         self.connection.enabled = false;
     }
 
-    pub fn connect(&mut self, host: String) -> Result<(TcpStream, Receiver<String>), std::io::Error> {
-        let stream = TcpStream::connect(host);
+    pub async fn connect(&mut self, host: String) -> Result<(OwnedWriteHalf, Receiver<String>), std::io::Error> {
+        let stream = TcpStream::connect(host).await;
 
         if let Err(e) = stream {
             self.current_error = e.to_string();
@@ -132,34 +138,36 @@ impl App {
 
         let (connection_sender, connection_receiver) = mpsc::channel::<String>();
 
-        let mut stream = stream.unwrap();
-        let stream_clone = stream.try_clone().unwrap();
+        let stream = stream.unwrap();
+        let (mut read, mut write) = stream.into_split();
         self.state = State::Waiting;
 
         let username = self.config.multiplayer.username.clone();
         let color = self.config.multiplayer.color.clone();
 
-        let join_message = Message::Join(UserData::new(username, color));
+    let join_message = Message::Join(UserData::new(username, color));
 
-        stream.write(join_message.to_string().as_bytes()).unwrap();
+        write.write(join_message.to_string().as_bytes()).await.unwrap();
 
-        std::thread::spawn(move || loop {
-            let mut buf = vec![0u8; 1024];
-
-            if stream.read(&mut buf).is_err() {
-                break;
-            }
-
-            buf.retain(|byte| byte != &u8::MIN);
-
-            if !buf.is_empty() {
-                let data = String::from_utf8(buf).unwrap();
-                connection_sender.send(data).unwrap();
+        tokio::spawn(async move {
+            loop {
+                let mut buf = vec![0u8; 1024];
+    
+                if read.read(&mut buf).await.is_err() {
+                    break;
+                }
+    
+                buf.retain(|byte| byte != &u8::MIN);
+    
+                if !buf.is_empty() {
+                    let data = String::from_utf8(buf).unwrap();
+                    connection_sender.send(data).unwrap();
+                }
             }
         });
 
 
-        Ok((stream_clone, connection_receiver))
+        Ok((write, connection_receiver))
     }
 
     /*pub fn send_conn(&mut self, data: String) {

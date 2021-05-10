@@ -5,13 +5,15 @@ use basedtyper::{
     ui,
 };
 
-use std::{io, sync::mpsc};
+use std::io;
+use std::sync::mpsc;
 
 use crossterm::{ExecutableCommand, terminal::{enable_raw_mode, EnterAlternateScreen}};
 
 use tui::{Terminal, backend::CrosstermBackend};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode()?;
 
     let mut stdout = io::stdout();
@@ -30,10 +32,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     terminal.clear().unwrap();
 
+
+
     loop {
         if let Ok(msg) = connection_receiver.try_recv() {
             app.connection.enabled = true;
-            message_handler(msg, &mut app);
+            message_handler(msg, &mut app).await;
         }
 
         if let Ok(msg) = input_receiver.try_recv() {
@@ -44,7 +48,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             match args[0] {
                 "connect" => {
                     let host = args[1];
-                    let connection = app.connect(host.to_string());
+                    let connection = app.connect(host.to_string()).await;
+
                     if let Ok(conn) = connection {
                         connection_receiver = conn.1;
                         app.connection = Connection::new(conn.0);
@@ -58,7 +63,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         terminal.draw(|f| ui::draw_ui(f, &app)).unwrap();
 
         if let Ok(Event::Input(event)) = events.next() {
-            input_handler(event, &mut app, input_sender.clone(), connection_sender.clone());
+            input_handler(event, &mut app, input_sender.clone(), connection_sender.clone()).await;
         }
 
         if app.should_exit {

@@ -1,7 +1,7 @@
-use std::io::Write;
 use std::{sync::mpsc::Sender, time::Instant};
 use crate::{event::Key, parser::Word, ui::wordlist::Wordlist};
 use crate::{parser, app::{State, App}};
+use tokio::io::AsyncWriteExt;
 
 use super::message::Message;
 
@@ -42,7 +42,7 @@ fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
     app.restart(State::TypingGame);
 }
 
-pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_sender: Sender<String>) {
+pub async fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_sender: Sender<String>) {
     match key {
         Key::Up => {
             match app.state {
@@ -107,7 +107,7 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                         'c' => {
                             match app.connection.enabled {
                                 true => {
-                                    app.close_connection();
+                                    app.close_connection().await;
                                     app.restart(State::MainMenu);
                                 }
 
@@ -137,12 +137,12 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
 
                         if app.connection.enabled {
                             let sock = app.connection.tcp.clone().unwrap();
-                            let mut sock_lock = sock.lock().unwrap();
+                            let mut sock_lock = sock.lock().await;
 
                             let message = Message::Keypress.to_string();
 
                             if app.input_string.trim() != word_string {
-                                sock_lock.write(message.as_bytes()).unwrap();
+                                sock_lock.write(message.as_bytes()).await.unwrap();
                             }
 
                             drop(sock_lock);
@@ -153,19 +153,20 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
 
                     if app.input_string.trim() == word_string {
                         app.time_taken = if app.timer.is_some() { app.timer.unwrap().elapsed().as_millis() } else { 0 };
+
                         match app.connection.enabled {
                             true => {
                                 app.state = State::MultiplayerEndScreen;
 
                                 let sock = app.connection.tcp.clone().unwrap();
-                                let mut sock_lock = sock.lock().unwrap();
+                                let mut sock_lock = sock.lock().await;
 
                                 let wpm = (app.wordlist.to_string().len() as f64 / 5_f64)
                                     / ((app.time_taken as f64 / 1000_f64) / 60_f64);
 
                                 let message = Message::Finished(wpm).to_string();
 
-                                sock_lock.write(message.as_bytes()).unwrap();
+                                sock_lock.write(message.as_bytes()).await.unwrap();
                             }
 
                             false => app.state = State::EndScreen,
@@ -178,7 +179,7 @@ pub fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_send
                 State::MultiplayerEndScreen => {
                     match c {
                         'q' => {
-                            app.close_connection();
+                            app.close_connection().await;
                             app.restart(State::MainMenu);
                         }
                         _ => ()
