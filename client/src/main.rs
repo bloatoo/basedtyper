@@ -1,46 +1,28 @@
-use basedtyper::{
-    event::*,
-    app::{Connection, App},
-    handlers::{message_handler, input_handler},
-    ui,
-};
+use basedtyper::{app::App, io::EventHandler, ui};
 
-use std::io;
-use std::sync::mpsc;
+use std::{io, sync::mpsc::Receiver};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
-use crossterm::{ExecutableCommand, terminal::{enable_raw_mode, EnterAlternateScreen}};
-
-use tui::{Terminal, backend::CrosstermBackend};
+use crossterm::{terminal::{LeaveAlternateScreen, disable_raw_mode}, execute};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    enable_raw_mode()?;
+    let (event_tx, event_rx) = std::sync::mpsc::channel();
 
-    let mut stdout = io::stdout();
-    stdout.execute(EnterAlternateScreen).unwrap();
+    let app = Arc::new(Mutex::new(App::new()));
+    let app_clone = app.clone();
 
-    let (input_sender, input_receiver) = mpsc::channel::<String>();
-    let (connection_sender, mut connection_receiver) = mpsc::channel::<String>();
+    let handler = EventHandler::new(app_clone);
 
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-    let events = Events::new(1000);
-
-    let mut app = App::new(terminal.size().unwrap());
+    std::thread::spawn(move || {
+        handle_events(handler, event_rx);
+    });
 
     println!("\x1b[5 q");
 
-    terminal.clear().unwrap();
 
-
-
-    loop {
-        if let Ok(msg) = connection_receiver.try_recv() {
-            app.connection.enabled = true;
-            message_handler(msg, &mut app).await;
-        }
-
-        if let Ok(msg) = input_receiver.try_recv() {
+    /*    if let Ok(msg) = input_receiver.try_recv() {
             let args: Vec<&str> = msg.split(' ')
                 .map(|elem| elem.trim())
                 .collect();
@@ -48,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match args[0] {
                 "connect" => {
                     let host = args[1];
-                    let connection = app.connect(host.to_string()).await;
+                    let connection = app.connect(host.to_string(), event_tx.clone()).await;
 
                     if let Ok(conn) = connection {
                         connection_receiver = conn.1;
@@ -58,19 +40,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 _ => ()
             }
-        }
+        }*/
 
-        terminal.draw(|f| ui::draw_ui(f, &app)).unwrap();
+    ui::start(app, event_tx.clone()).await.unwrap();
 
-        if let Ok(Event::Input(event)) = events.next() {
-            input_handler(event, &mut app, input_sender.clone(), connection_sender.clone()).await;
-        }
-
-        if app.should_exit {
-            break;
-        }
-    }
-
-    app.exit().unwrap();
+    exit().unwrap();
     Ok(())
+}
+
+fn exit() -> Result<(), Box<dyn std::error::Error>> {
+    disable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, LeaveAlternateScreen, crossterm::cursor::Show)?;
+    Ok(())
+}
+
+#[tokio::main]
+async fn handle_events(mut handler: EventHandler, rx: Receiver<String>) {
+    while let Ok(event) = rx.recv() {
+        handler.handle_event(event).await;
+    }
 }

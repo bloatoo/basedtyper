@@ -1,19 +1,17 @@
-use crate::app::{State, App};
-use std::cmp::Ordering;
-use tui::{ backend::Backend, layout::{ Alignment, Rect
-    },
-    style::{
+use crate::{app::{State, App}, event::{Event, Events}, handlers::input_handler};
+use std::{cmp::Ordering, sync::{Arc, mpsc::Sender}};
+use crossterm::terminal::{EnterAlternateScreen, enable_raw_mode};
+use crossterm::ExecutableCommand;
+use tokio::sync::Mutex;
+
+use tui::{Terminal, backend::{Backend, CrosstermBackend}, layout::{Alignment, Constraint, Direction, Layout, Rect}, style::{
         Color,
         Modifier,
         Style
-    },
-    terminal::Frame,
-    text::{
+    }, terminal::Frame, text::{
         Span,
         Spans
-    }, 
-    widgets::Paragraph
-};
+    }, widgets::Paragraph};
 
 pub mod utils;
 pub mod wordlist;
@@ -152,11 +150,11 @@ pub fn draw_typing_game<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     let mut ui_text = spans(chunk.height);
     let mut wordlist_string: Vec<Span> = Vec::new();
     
-    let mut words: String = app.wordlist.to_string();
+    let words: String = app.wordlist.to_string();
 
-    if words.len() > app.chunks[0].width as usize {
+    /*if words.len() > app.chunks[0].width as usize {
         words = String::from(&words[..app.chunks[0].width as usize]);
-    }
+    }*/
 
     let words = words
         .split("")
@@ -166,12 +164,11 @@ pub fn draw_typing_game<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
         match index.cmp(&app.current_index) {
             Ordering::Less => {
                 if words[index] != app.input_string.split("").nth(index).unwrap() {
-                     wordlist_string.push(Span::styled(*c, Style::default().bg(Color::Red)));
+                    wordlist_string.push(Span::styled(*c, Style::default().bg(Color::Red)));
                 } else {
-                     wordlist_string.push(Span::styled(*c, Style::default().fg(Color::DarkGray)));
+                    wordlist_string.push(Span::styled(*c, Style::default().fg(Color::DarkGray)));
                 }
             }
-
             _ => wordlist_string.push(Span::styled(*c, Style::default())),
         }
     }
@@ -224,4 +221,42 @@ pub fn draw_ui<T: Backend>(f: &mut Frame<T>, app: &App) {
         State::WordlistPrompt => draw_wordlist_prompt(f, app.chunks[0], app),
         State::MultiplayerEndScreen => draw_multiplayer_end_screen(f, app.chunks[0], app),
     }
+}
+
+pub async fn start(app: Arc<Mutex<App>>, event_tx: Sender<String>) -> Result<(), Box<dyn std::error::Error>> {
+    enable_raw_mode()?;
+
+    let mut stdout = std::io::stdout();
+    stdout.execute(EnterAlternateScreen).unwrap();
+
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+    let events = Events::new(1000);
+
+    terminal.clear().unwrap();
+
+    loop {
+        let mut app = app.lock().await;
+        
+        if let Ok(size) = terminal.backend().size() {
+
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(5)
+                .constraints([Constraint::Percentage(100)])
+                .split(size);
+
+            app.chunks = chunks;
+        }
+        
+        terminal.draw(|mut f| draw_ui(&mut f, &app)).unwrap();
+        if let Ok(Event::Input(event)) = events.next() {
+            input_handler(event, &mut app, event_tx.clone()).await;
+        }
+        if app.should_exit {
+            break;
+        }
+    }
+
+    Ok(())
 }

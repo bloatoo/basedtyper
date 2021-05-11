@@ -25,6 +25,10 @@ fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
         words_string = String::from(&words_string[..app.chunks[0].width as usize]);
     }
 
+    if words_string.len() % 2 != 0 {
+        words_string = words_string[..words_string.len() - 2].to_string()
+    }
+
     let defs = words
         .iter()
         .map(|word| word.get_definition().clone())
@@ -42,7 +46,7 @@ fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
     app.restart(State::TypingGame);
 }
 
-pub async fn input_handler(key: Key, app: &mut App, sender: Sender<String>, _conn_sender: Sender<String>) {
+pub async fn input_handler(key: Key, app: &mut App, sender: Sender<String>) {
     match key {
         Key::Up => {
             match app.state {
