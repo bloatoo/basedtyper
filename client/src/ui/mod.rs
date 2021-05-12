@@ -1,4 +1,4 @@
-use crate::{app::{State, App}, event::{Event, Events}, handlers::input_handler};
+use crate::{app::{State, App}, event::{Event, Events}, handlers::input_handler, io::IOEvent};
 use std::{cmp::Ordering, sync::{Arc, mpsc::Sender}};
 use crossterm::terminal::{EnterAlternateScreen, enable_raw_mode};
 use crossterm::ExecutableCommand;
@@ -223,7 +223,7 @@ pub fn draw_ui<T: Backend>(f: &mut Frame<T>, app: &App) {
     }
 }
 
-pub async fn start(app: Arc<Mutex<App>>, event_tx: Sender<String>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn start(app: Arc<Mutex<App>>, event_tx: Sender<IOEvent>) -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode()?;
 
     let mut stdout = std::io::stdout();
@@ -235,24 +235,32 @@ pub async fn start(app: Arc<Mutex<App>>, event_tx: Sender<String>) -> Result<(),
 
     terminal.clear().unwrap();
 
+    let mut is_first_render = true;
+
     loop {
         let mut app = app.lock().await;
         
         if let Ok(size) = terminal.backend().size() {
+            if is_first_render || size != app.chunks[0] {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .margin(5)
+                    .constraints([Constraint::Percentage(100)])
+                    .split(size);
 
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .margin(5)
-                .constraints([Constraint::Percentage(100)])
-                .split(size);
+                app.chunks = chunks.clone();
+                app.wordlist.resize(chunks[0].width);
 
-            app.chunks = chunks;
+                is_first_render = false;
+            }
         }
         
         terminal.draw(|mut f| draw_ui(&mut f, &app)).unwrap();
+
         if let Ok(Event::Input(event)) = events.next() {
             input_handler(event, &mut app, event_tx.clone()).await;
         }
+
         if app.should_exit {
             break;
         }

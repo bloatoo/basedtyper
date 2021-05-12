@@ -58,4 +58,10 @@ impl Wordlist {
             .map(|elem| elem.get_word().clone())
             .collect()
     }
+    pub fn resize(&mut self, width: u16) {
+        let before = self.to_string();
+        if before.len() > width as usize {
+            self.words = Self::from(before.split_at(width as usize).0.to_string()).words;
+        }
+    }
 }

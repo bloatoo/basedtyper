@@ -1,4 +1,4 @@
-use basedtyper::{app::App, io::EventHandler, ui};
+use basedtyper::{app::App, io::{EventHandler, IOEvent}, ui};
 
 use std::{io, sync::mpsc::Receiver};
 use std::sync::Arc;
@@ -56,7 +56,7 @@ fn exit() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tokio::main]
-async fn handle_events(mut handler: EventHandler, rx: Receiver<String>) {
+async fn handle_events(mut handler: EventHandler, rx: Receiver<IOEvent>) {
     while let Ok(event) = rx.recv() {
         handler.handle_event(event).await;
     }

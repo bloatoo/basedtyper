@@ -1,9 +1,9 @@
 use std::{sync::mpsc::Sender, time::Instant};
-use crate::{event::Key, parser::Word, ui::wordlist::Wordlist};
+use crate::{event::Key, io::IOEvent, parser::Word, ui::wordlist::Wordlist};
 use crate::{parser, app::{State, App}};
 use tokio::io::AsyncWriteExt;
 
-use super::message::Message;
+use crate::message::Message;
 
 fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
     let words = parser::parse_words(mode.to_string().as_str(), wordlist_path);
@@ -46,7 +46,7 @@ fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
     app.restart(State::TypingGame);
 }
 
-pub async fn input_handler(key: Key, app: &mut App, sender: Sender<String>) {
+pub async fn input_handler(key: Key, app: &mut App, event_tx: Sender<IOEvent>) {
     match key {
         Key::Up => {
             match app.state {
@@ -85,7 +85,11 @@ pub async fn input_handler(key: Key, app: &mut App, sender: Sender<String>) {
         Key::Enter => {
             match app.state {
                 State::WordlistPrompt => set_wordlist("wordlist", Some(app.locate_wordlist()), app),
-                State::HostPrompt => sender.send(format!("connect {}", app.input_string)).unwrap(),
+                State::HostPrompt => {
+                    if let Err(e) = app.connect(event_tx.clone()).await {
+                        app.current_error = e.to_string();
+                    }
+                }
                 State::MainMenu => {
                     match app.current_index {
                         1 => app.restart(State::WordlistPrompt),

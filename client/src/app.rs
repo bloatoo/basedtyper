@@ -1,8 +1,8 @@
 use std::sync::Arc;
-use tui::layout::{Constraint, Direction, Layout, Rect};
+use tui::layout::Rect;
 use std::sync::mpsc::Sender;
 
-use crate::{handlers::message::{Message, UserData}, ui::wordlist::Wordlist};
+use crate::{message::{Message, UserData}, io::IOEvent, ui::wordlist::Wordlist};
 
 use tokio::net::{TcpStream, tcp::OwnedWriteHalf};
 use tokio::sync::Mutex;
@@ -11,9 +11,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use super::config::Config;
 
 use std::{
-    io,
     path::Path,
-    sync::mpsc::{self, Receiver},
     time::Instant
 };
 
@@ -122,8 +120,8 @@ impl App {
         self.connection.enabled = false;
     }
 
-    pub async fn connect(&mut self, host: String, event_tx: Sender<String>) -> Result<(), std::io::Error> {
-        let stream = TcpStream::connect(host).await;
+    pub async fn connect(&mut self, event_tx: Sender<IOEvent>) -> Result<(), std::io::Error> {
+        let stream = TcpStream::connect(self.input_string.clone()).await;
 
         if let Err(e) = stream {
             self.current_error = e.to_string();
@@ -153,7 +151,7 @@ impl App {
     
                 if !buf.is_empty() {
                     let data = String::from_utf8(buf).unwrap();
-                    event_tx.send(data).unwrap();
+                    event_tx.send(IOEvent::ServerMessage(data)).unwrap();
                 }
             }
         });
