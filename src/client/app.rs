@@ -2,7 +2,7 @@ use std::sync::Arc;
 use tui::layout::Rect;
 use std::sync::mpsc::Sender;
 
-use crate::{message::{Message, UserData}, io::IOEvent, ui::wordlist::Wordlist};
+use super::{message::{Message, UserData}, io::IOEvent, ui::wordlist::Wordlist};
 
 use tokio::net::{TcpStream, tcp::OwnedWriteHalf};
 use tokio::sync::Mutex;

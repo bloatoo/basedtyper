@@ -1,4 +1,10 @@
-use server::{client::Client, handlers::input_handler, message::{Message, UserData}, server::Server};
+pub mod client;
+pub mod server;
+pub mod word;
+pub mod handlers;
+pub mod message;
+
+use {client::Client, handlers::input_handler, message::{Message, UserData}, server::Server};
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::{self, *};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -16,21 +22,18 @@ fn nonblocking_stdin() -> UnboundedReceiver<String> {
     receiver
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> { 
+pub async fn start_server(port: Option<u32>) -> Result<(), Box<dyn std::error::Error>> { 
     //let (sender, receiver) = mpsc::channel::<String>();
     let mut input = nonblocking_stdin();
 
-    let port = std::env::args().nth(1).unwrap_or(String::from("1337"));
-    let port = port.parse::<u32>().unwrap_or(1337);
-
+    let port = port.unwrap_or(1337);
     let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).await.unwrap();
 
     let server = Server::default();
 
     println!("Server started on port {}.", port);
 
-    let clients = server.clients.clone();
+    //let clients = server.clients.clone();
 
     let mut server_clone = server.clone();
 

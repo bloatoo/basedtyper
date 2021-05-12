@@ -1,13 +1,22 @@
-use basedtyper::{app::App, io::{EventHandler, IOEvent}, ui};
+pub mod config;
+pub mod app;
+pub mod parser;
+pub mod ui;
+pub mod event;
+pub mod handlers;
+pub mod io;
+pub mod message;
 
-use std::{io, sync::mpsc::Receiver};
+use super::client::{app::App, io::{EventHandler, IOEvent}};
+
+use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crossterm::{terminal::{LeaveAlternateScreen, disable_raw_mode}, execute};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//#[tokio::main]
+pub async fn start_client() -> Result<(), Box<dyn std::error::Error>> {
     let (event_tx, event_rx) = std::sync::mpsc::channel();
 
     let app = Arc::new(Mutex::new(App::new()));
@@ -16,7 +25,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let handler = EventHandler::new(app_clone);
 
     std::thread::spawn(move || {
-        handle_events(handler, event_rx);
+        async {
+            handle_events(handler, event_rx);
+        }
     });
 
     println!("\x1b[5 q");
@@ -50,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn exit() -> Result<(), Box<dyn std::error::Error>> {
     disable_raw_mode()?;
-    let mut stdout = io::stdout();
+    let mut stdout = std::io::stdout();
     execute!(stdout, LeaveAlternateScreen, crossterm::cursor::Show)?;
     Ok(())
 }

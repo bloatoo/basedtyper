@@ -1,9 +1,9 @@
 use std::{sync::mpsc::Sender, time::Instant};
-use crate::{event::Key, io::IOEvent, parser::Word, ui::wordlist::Wordlist};
-use crate::{parser, app::{State, App}};
+use super::super::{event::Key, io::IOEvent, parser::Word, ui::wordlist::Wordlist};
+use super::super::{parser, app::{State, App}};
 use tokio::io::AsyncWriteExt;
 
-use crate::message::Message;
+use super::super::message::Message;
 
 fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
     let words = parser::parse_words(mode.to_string().as_str(), wordlist_path);

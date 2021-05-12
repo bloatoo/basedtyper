@@ -1,4 +1,4 @@
-use crate::{app::{State, App}, event::{Event, Events}, handlers::input_handler, io::IOEvent};
+use super::{app::{State, App}, event::{Event, Events}, handlers::input_handler, io::IOEvent};
 use std::{cmp::Ordering, sync::{Arc, mpsc::Sender}};
 use crossterm::terminal::{EnterAlternateScreen, enable_raw_mode};
 use crossterm::ExecutableCommand;

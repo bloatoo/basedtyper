@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use serde_json::{Value, json};
 use tokio::sync::Mutex;
-use crate::message::{Color, Forwardable, Message, UserData};
+use super::message::{Color, Forwardable, Message, UserData};
 
 use super::client::Client;
 use super::word::Word;
