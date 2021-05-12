@@ -98,7 +98,7 @@ pub fn parse_wordlist<T: AsRef<Path>>(path: T, count: &u32) -> Result<Vec<Word>,
         let mut words: Vec<Word> = vec![];
 
         for _ in if *count > chunks.len() as u32 {
-            0..chunks.len() as u32
+            0..chunks.len() as u32 - 1
         } else { 
             0..*count
         } {

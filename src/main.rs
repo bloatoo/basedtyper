@@ -1,5 +1,5 @@
 use std::env;
-use basedtyper::{client, server};
+use basedtyper::{client, server, wordlist_generator};
 
 #[tokio::main]
 async fn main() {
@@ -19,6 +19,16 @@ async fn main() {
                     None => {
                         server::start_server(None).await.unwrap();
                     }
+                }
+            }
+            "generate" => {
+                let path = args
+                    .iter()
+                    .nth(2);
+
+                match path {
+                    Some(p) => wordlist_generator::generate_wordlist(p.into()).await.unwrap(),
+                    None => println!("No file path was provided.")
                 }
             }
             _ => ()
