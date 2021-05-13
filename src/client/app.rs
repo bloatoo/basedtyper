@@ -151,7 +151,9 @@ impl App {
     
                 if !buf.is_empty() {
                     let data = String::from_utf8(buf).unwrap();
-                    event_tx.send(IOEvent::ServerMessage(data)).unwrap();
+                    if let Err(e) = event_tx.send(IOEvent::ServerMessage(data)) {
+                        panic!("{}", e.to_string());
+                    }
                 }
             }
         });

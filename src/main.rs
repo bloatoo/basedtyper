@@ -1,3 +1,4 @@
+#![feature(async_closure)]
 use std::env;
 use basedtyper::{client, server, wordlist_generator};
 

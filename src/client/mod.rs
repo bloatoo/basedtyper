@@ -25,7 +25,9 @@ fn panic_hook(info: &PanicInfo<'_>) {
             None => "Box<Any>"
         }
     };
+
     disable_raw_mode().unwrap();
+
     execute!(
         std::io::stdout(),
         LeaveAlternateScreen,
@@ -44,9 +46,7 @@ pub async fn start_client() -> Result<(), Box<dyn std::error::Error>> {
     let handler = EventHandler::new(app_clone);
 
     std::thread::spawn(move || {
-        async {
-            handle_events(handler, event_rx);
-        }
+        handle_events(handler, event_rx);
     });
 
     println!("\x1b[5 q");
@@ -72,7 +72,7 @@ pub async fn start_client() -> Result<(), Box<dyn std::error::Error>> {
             }
         }*/
 
-    ui::start(app, event_tx.clone()).await.unwrap();
+    ui::start(app, event_tx).await.unwrap();
 
     exit().unwrap();
     Ok(())
@@ -87,7 +87,9 @@ fn exit() -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::main]
 async fn handle_events(mut handler: EventHandler, rx: Receiver<IOEvent>) {
-    while let Ok(event) = rx.recv() {
-        handler.handle_event(event).await;
+    loop {
+        if let Ok(event) = rx.try_recv() {
+            handler.handle_event(event).await;
+        }
     }
 }

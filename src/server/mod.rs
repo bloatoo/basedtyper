@@ -23,7 +23,6 @@ fn nonblocking_stdin() -> UnboundedReceiver<String> {
 }
 
 pub async fn start_server(port: Option<u32>) -> Result<(), Box<dyn std::error::Error>> { 
-    //let (sender, receiver) = mpsc::channel::<String>();
     let mut input = nonblocking_stdin();
 
     let port = port.unwrap_or(1337);
@@ -32,8 +31,6 @@ pub async fn start_server(port: Option<u32>) -> Result<(), Box<dyn std::error::E
     let server = Server::default();
 
     println!("Server started on port {}.", port);
-
-    //let clients = server.clients.clone();
 
     let mut server_clone = server.clone();
 
@@ -47,10 +44,8 @@ pub async fn start_server(port: Option<u32>) -> Result<(), Box<dyn std::error::E
 
     loop {
         if let Ok((stream, _)) = listener.accept().await {
-            //println!("New connection: {}", stream.peer_addr().unwrap());
             let (mut read, mut write) = stream.into_split();
 
-            //let sender = sender.clone();
             let mut server_clone = server.clone();
             let mut server_clone2 = server.clone();
 
@@ -92,7 +87,6 @@ pub async fn start_server(port: Option<u32>) -> Result<(), Box<dyn std::error::E
 
                     if !buf.is_empty() {
                         server_clone.process_message(String::from_utf8(buf.clone()).unwrap(), username.clone()).await;
-                        //server_clone.forward(String::from_utf8(buf).unwrap(), username.clone()).await;
                     }
                 }
 
