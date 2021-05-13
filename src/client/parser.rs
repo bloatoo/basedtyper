@@ -40,9 +40,11 @@ pub fn parse_words(mode: &str, wordlist_path: Option<String>) -> Result<Vec<Word
 
             let quote = json["data"]["children"][rand::thread_rng().gen_range(0..100) as usize]["data"]["selftext"].as_str().unwrap();
 
-            let re = regex::Regex::new("[^a-zA-Z0-9\\d\\s\\.,']").unwrap();
+            let re = regex::Regex::new("[^a-zA-Z0-9\\d\\s\\.,':-]").unwrap();
+            let re2 = regex::Regex::new("\\w[ ]{2,}\\w").unwrap();
 
-            let quote = re.replace_all(quote, "");
+            let quote = re.replace_all(quote, "").to_string();
+            let quote = re2.replace_all(&quote[..], " ");
             let quote = quote.trim();
             
             for word in quote.split(' ') {

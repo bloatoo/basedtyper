@@ -21,6 +21,7 @@ async fn main() {
                     }
                 }
             }
+
             "generate" => {
                 let path = args
                     .iter()

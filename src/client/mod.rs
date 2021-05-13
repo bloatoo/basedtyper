@@ -9,14 +9,33 @@ pub mod message;
 
 use super::client::{app::App, io::{EventHandler, IOEvent}};
 
-use std::sync::mpsc::Receiver;
+use std::{panic::PanicInfo, sync::mpsc::Receiver};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crossterm::{terminal::{LeaveAlternateScreen, disable_raw_mode}, execute};
+use crossterm::{execute, style::Print, terminal::{LeaveAlternateScreen, disable_raw_mode}};
 
-//#[tokio::main]
+fn panic_hook(info: &PanicInfo<'_>) {
+    let location = info.location().unwrap();
+
+    let message = match info.payload().downcast_ref::<&'static str>() {
+        Some(msg) => *msg,
+        None => match info.payload().downcast_ref::<String>() {
+            Some(s) => &s[..],
+            None => "Box<Any>"
+        }
+    };
+    disable_raw_mode().unwrap();
+    execute!(
+        std::io::stdout(),
+        LeaveAlternateScreen,
+        Print(format!("thread <unnamed> panicked at '{}', {}\n", message, location)),
+    ).unwrap();
+}
+
 pub async fn start_client() -> Result<(), Box<dyn std::error::Error>> {
+    std::panic::set_hook(Box::new(|info| panic_hook(info)));
+
     let (event_tx, event_rx) = std::sync::mpsc::channel();
 
     let app = Arc::new(Mutex::new(App::new()));
