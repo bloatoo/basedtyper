@@ -1,4 +1,4 @@
-use super::super::parser::Word;
+use crate::utils::Word;
 
 pub struct Wordlist {
     words: Vec<Word>,

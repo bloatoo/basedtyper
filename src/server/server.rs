@@ -4,7 +4,7 @@ use tokio::sync::Mutex;
 use super::message::{Color, Forwardable, Message, UserData};
 
 use super::client::Client;
-use super::word::Word;
+use crate::utils::Word;
 use tokio::io::AsyncWriteExt;
 
 #[derive(Clone)]

@@ -1,6 +1,6 @@
 [package]
 name = "basedtyper"
-version = "0.1.0"
+version = "0.9.0"
 authors = ["bloatoo <bloatoo@tuta.io>"]
 edition = "2018"
 

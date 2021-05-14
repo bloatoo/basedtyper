@@ -1,6 +1,6 @@
-use crate::message::Message;
+use crate::client::message::Message;
 
-use crate::{app::{App, Player, State}, message::ServerMessage, ui::wordlist::Wordlist};
+use crate::client::{app::{App, Player, State}, message::ServerMessage, ui::wordlist::Wordlist};
 
 use std::sync::Arc;
 use tokio::{io::AsyncWriteExt, sync::Mutex};

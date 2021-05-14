@@ -1,14 +1,15 @@
 use std::{sync::mpsc::Sender, time::Instant};
 use crate::utils::calc_wpm;
 
-use super::super::{event::Key, io::IOEvent, parser::Word, ui::wordlist::Wordlist};
-use super::super::{parser, app::{State, App}};
+use crate::client::{event::Key, io::IOEvent, ui::wordlist::Wordlist};
+use crate::utils::{self, Word};
+use crate::client::app::{State, App};
 use tokio::io::AsyncWriteExt;
 
 use super::super::message::Message;
 
 fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
-    let words = parser::parse_words(mode.to_string().as_str(), wordlist_path);
+    let words = utils::parse_words(mode.to_string().as_str(), wordlist_path);
 
     if let Err(err) = words {
         app.current_error = err.to_string();

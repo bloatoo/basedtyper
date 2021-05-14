@@ -1,3 +1,5 @@
+pub mod config;
+
 use std::sync::Arc;
 use tui::layout::Rect;
 use std::sync::mpsc::Sender;
@@ -8,7 +10,7 @@ use tokio::net::{TcpStream, tcp::OwnedWriteHalf};
 use tokio::sync::Mutex;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-use super::config::Config;
+use config::Config;
 
 use std::{
     path::Path,
