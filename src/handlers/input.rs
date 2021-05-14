@@ -1,4 +1,6 @@
 use std::{sync::mpsc::Sender, time::Instant};
+use crate::utils::calc_wpm;
+
 use super::super::{event::Key, io::IOEvent, parser::Word, ui::wordlist::Wordlist};
 use super::super::{parser, app::{State, App}};
 use tokio::io::AsyncWriteExt;
@@ -146,10 +148,15 @@ pub async fn input_handler(key: Key, app: &mut App, event_tx: Sender<IOEvent>) {
                         if app.connection.enabled {
                             let sock = app.connection.tcp.clone().unwrap();
                             let mut sock_lock = sock.lock().await;
-
-                            let message = Message::Keypress.to_string();
+                            let time = match app.timer.is_some() {
+                                true => app.timer.unwrap().elapsed().as_millis() as f64,
+                                false => 0.0
+                            };
 
                             if app.input_string.trim() != word_string {
+                                let wpm = calc_wpm(app.wordlist.to_string().len() as f64, time);
+                                let message = Message::Keypress(wpm).to_string();
+                                //event_tx.send(IOEvent::Keypress(wpm)).unwrap();
                                 sock_lock.write(message.as_bytes()).await.unwrap();
                             }
 

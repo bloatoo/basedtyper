@@ -42,11 +42,12 @@ impl<'a> From<&'a str> for Color {
 pub struct UserData {
     pub username: String,
     pub color: Color,
+    pub wpm: f64,
 }
 
 impl UserData {
-    pub fn new(username: String, color: Color) -> Self {
-        Self { username, color }
+    pub fn new(username: String, color: Color, wpm: f64) -> Self {
+        Self { username, color, wpm }
     }
 }
 

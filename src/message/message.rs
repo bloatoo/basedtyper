@@ -3,7 +3,7 @@ use serde_json::json;
 pub enum Message {
     Join(UserData),
     Finished(f64),
-    Keypress
+    Keypress(f64)
 }
 
 impl ToString for Message {
@@ -19,9 +19,12 @@ impl ToString for Message {
                 })
             }
 
-            Self::Keypress => {
+            Self::Keypress(wpm) => {
                 json!({
                     "call": "keypress",
+                    "data": {
+                        "wpm": wpm
+                    }
                 })
             }
 
@@ -43,13 +46,15 @@ impl ToString for Message {
 pub struct UserData {
     pub username: String,
     pub color: String,
+    pub wpm: f64
 }
 
 impl UserData {
-    pub fn new(username: String, color: String) -> Self {
+    pub fn new(username: String, color: String, wpm: f64) -> Self {
         Self {
             username,
             color,
+            wpm,
         }
     }
 }

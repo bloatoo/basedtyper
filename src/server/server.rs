@@ -23,7 +23,7 @@ impl Server {
 
     pub async fn create_init_message(&self) -> String {
         let data = self.clients.lock().await.iter().map(|client| {
-            serde_json::from_str(&UserData::new(client.username.clone(), Color::from(&client.color[..])).to_string()[..]).unwrap()
+            serde_json::from_str(&UserData::new(client.username.clone(), Color::from(&client.color[..]), client.wpm).to_string()[..]).unwrap()
         }).collect::<Vec<Value>>();
 
         let data = json!({
@@ -50,8 +50,8 @@ impl Server {
 
     pub async fn process_message(&mut self, message_string: String, username: String) {
         match Message::from(message_string.clone().as_str()) {
-            Message::Keypress => {
-                let msg = Message::Keypress.forwardable(username.clone());
+            Message::Keypress(wpm) => {
+                let msg = Message::Keypress(wpm).forwardable(username.clone());
                 self.forward(msg, username).await;
             }
 

@@ -8,7 +8,7 @@ pub trait Forwardable {
 
 pub enum Message {
     Join(UserData),
-    Keypress/*(String)*/,
+    Keypress(f64),
     Finished(f64),
     Unknown,
 }
@@ -32,17 +32,27 @@ impl<'a> From<&'a str> for Message {
                 if let None = username {
                     return Message::Unknown;
                 }
+                let username = username.unwrap().to_string();
 
                 let color_str = data["color"].as_str();
 
                 if let None = color_str {
                     return Message::Unknown;
                 }
+                let color_str = color_str.unwrap();
 
-                Message::Join(UserData::new(username.unwrap().to_string(), Color::from(color_str.unwrap())))
+                Message::Join(UserData::new(username, Color::from(color_str), 0.0))
             }
 
-            "keypress" => Message::Keypress,
+            "keypress" => {
+                let wpm = data["wpm"].as_f64();
+                println!("{}", data);
+
+                match wpm {
+                    Some(wpm) => Message::Keypress(wpm),
+                    None => Message::Unknown
+                }
+            }
             "finished" => {
                 let wpm = data["wpm"].as_f64();
                 if let None = wpm {
@@ -81,9 +91,12 @@ impl Message {
                     }
                 })
             }
-            Self::Keypress => {
+            Self::Keypress(wpm) => {
                 json!({
                     "call": "keypress",
+                    "data": {
+                        "wpm": wpm,
+                    }
                 })
             }
             Self::Unknown => json!({})
@@ -95,11 +108,12 @@ impl Message {
 impl Forwardable for Message {
     fn forwardable(&self, username: String) -> String {
         match self {
-            Self::Keypress => {
+            Self::Keypress(wpm) => {
                 json!({
                     "call": "keypress",
                     "data": {
                         "username": username,
+                        "wpm": wpm,
                     }
                 })
             }

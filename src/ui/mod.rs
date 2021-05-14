@@ -18,6 +18,14 @@ pub mod wordlist;
 
 use utils::{center, spans};
 
+pub fn string_to_color(col: String) -> tui::style::Color {
+    match col.as_str() {
+        "red" => Color::Red,
+        "yellow" => Color::Yellow,
+        _ => Color::White,
+    }
+}
+
 pub fn draw_end_screen<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     let wpm = (app.wordlist.to_string().len() as f64 / 5_f64)
         / ((app.time_taken as f64 / 1000_f64) / 60_f64);
@@ -202,11 +210,11 @@ pub fn draw_typing_game<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     ui_text[chunk.height as usize / 2] = Spans::from(wordlist_string);
 
     if app.connection.enabled {
-        let mut pos = 2;
         app.connection.players.iter().enumerate().for_each(|(idx, player)| {
-            ui_text[chunk.height as usize / 2 + idx + pos] = Spans::from(Span::raw(player.username.clone()));
-            ui_text[chunk.height as usize / 2 + idx + pos + 1] = Spans::from(Span::raw(player.pos.to_string().repeat(player.pos)));
-            pos += 2;
+            ui_text[chunk.height as usize / 2 + 2 + idx] = Spans::from(vec![
+                Span::styled(player.username.clone(), Style::default().add_modifier(Modifier::BOLD).fg(string_to_color(player.color.clone()))),
+                Span::raw(format!(": {:.2}", player.wpm.clone())),
+            ]);
         });
     }
 

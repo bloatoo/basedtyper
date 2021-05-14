@@ -14,7 +14,9 @@ fn nonblocking_stdin() -> UnboundedReceiver<String> {
 
     std::thread::spawn(move || loop {
         let mut buf = String::new();
+
         std::io::stdin().read_line(&mut buf).unwrap();
+
         if let Err(e) = sender.send(buf) {
             println!("{}", e);
         }
@@ -22,10 +24,8 @@ fn nonblocking_stdin() -> UnboundedReceiver<String> {
     receiver
 }
 
-pub async fn start_server(port: Option<u32>) -> Result<(), Box<dyn std::error::Error>> { 
+pub async fn start_server(port: u32) -> Result<(), Box<dyn std::error::Error>> { 
     let mut input = nonblocking_stdin();
-
-    let port = port.unwrap_or(1337);
     let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).await.unwrap();
 
     let server = Server::default();
@@ -47,7 +47,6 @@ pub async fn start_server(port: Option<u32>) -> Result<(), Box<dyn std::error::E
             let (mut read, mut write) = stream.into_split();
 
             let mut server_clone = server.clone();
-            let mut server_clone2 = server.clone();
 
             tokio::spawn(async move {
                 let mut buf = vec![0u8; 1024];
@@ -66,12 +65,14 @@ pub async fn start_server(port: Option<u32>) -> Result<(), Box<dyn std::error::E
                     if let Message::Join(data) = Message::from(message.clone().as_str()) {
                         username = data.username.clone();
 
-                        let new_user_data = UserData::new(data.username.clone(), data.color.clone());
-                        server_clone2.forward(Message::Join(new_user_data).to_json().to_string(), data.username.clone()).await;
+                        let new_user_data = UserData::new(data.username.clone(), data.color.clone(), data.wpm.clone());
+                        server_clone.forward(Message::Join(new_user_data).to_json().to_string(), data.username.clone()).await;
 
-                        write.write(server_clone2.create_init_message().await.as_bytes()).await.unwrap();
-                        let mut clients_lock = server_clone2.clients.lock().await;
+                        write.write(server_clone.create_init_message().await.as_bytes()).await.unwrap();
+
+                        let mut clients_lock = server_clone.clients.lock().await;
                         clients_lock.push(Client::new(write, username.clone(), data.color.to_string()));
+
                         println!("New player with username {}", username);
 
                         drop(clients_lock);

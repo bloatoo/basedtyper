@@ -1,6 +1,9 @@
-use super::super::{app::{App, Player, State}, message::ServerMessage, ui::wordlist::Wordlist};
+use crate::message::Message;
+
+use crate::{app::{App, Player, State}, message::ServerMessage, ui::wordlist::Wordlist};
+
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::{io::AsyncWriteExt, sync::Mutex};
 use super::IOEvent;
 
 pub struct EventHandler {
@@ -16,8 +19,14 @@ impl EventHandler {
 
     pub async fn handle_event(&mut self, event: IOEvent) {
         let mut app = self.app.lock().await;
+        let sock = app.connection.tcp.clone().unwrap();
+        let mut sock_lock = sock.lock().await;
 
         match event {
+            IOEvent::Keypress(wpm) => {
+                sock_lock.write(Message::Keypress(wpm).to_string().as_bytes()).await.unwrap();
+            }
+
             IOEvent::ServerMessage(msg) => {
                 match ServerMessage::from(msg) {
                     ServerMessage::Start(words) => {
@@ -29,13 +38,13 @@ impl EventHandler {
                     }
 
                     ServerMessage::Init(data) => {
-                        let mut data: Vec<Player> = data.iter().map(|p| Player::new(p.username.clone(), p.color.clone())).collect();
-                        app.set_players(&mut data);
+                        let data: Vec<Player> = data.iter().map(|p| Player::new(p.username.clone(), p.color.clone())).collect();
+                        app.set_players(data);
                     }
 
-                    ServerMessage::Keypress(username) => {
+                    ServerMessage::Keypress((username, wpm)) => {
                         let player = app.connection.players.iter_mut().find(|p| p.username == username).unwrap();
-                        player.pos += 1;
+                        player.wpm = wpm;
                     }
 
                     ServerMessage::Join(data) => {

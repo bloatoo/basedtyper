@@ -7,6 +7,7 @@ pub struct Client {
     pub input_len: u16,
     pub username: String,
     pub color: String,
+    pub wpm: f64,
 }
 
 impl Client {
@@ -17,7 +18,8 @@ impl Client {
             finished: false,
             input_correct: true,
             input_len: 0,
-            username
+            username,
+            wpm: 0.0,
         }
     }
 }

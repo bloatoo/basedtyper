@@ -5,7 +5,7 @@ use serde_json::Value;
 pub enum ServerMessage {
     Init(Vec<UserData>),
     Join(UserData),
-    Keypress(String),
+    Keypress((String, f64)),
     Finished(String),
     Start(String),
     Unknown
@@ -29,14 +29,17 @@ impl From<String> for ServerMessage {
                 if username.is_none() { return Self::Unknown; }
                 if color.is_none() { return Self::Unknown; }
 
-                Self::Join(UserData::new(username.unwrap().to_string(), color.unwrap().to_string()))
+                Self::Join(UserData::new(username.unwrap().to_string(), color.unwrap().to_string(), 0.0))
             }
 
             "keypress" => {
                 let username = data["username"].as_str();
-                if username.is_none() { return Self::Unknown; }
+                let wpm = data["wpm"].as_f64();
 
-                Self::Keypress(username.unwrap().to_string())
+                if username.is_none() { return Self::Unknown; }
+                if wpm.is_none() { return Self::Unknown; }
+
+                Self::Keypress((username.unwrap().to_string(), wpm.unwrap()))
             }
 
             "init" => {
@@ -45,8 +48,9 @@ impl From<String> for ServerMessage {
                 let players: Vec<UserData> = players.iter().map(|player| {
                     let username = player["username"].as_str().unwrap();
                     let color = player["color"].as_str().unwrap();
+                    //let wpm = player["wpm"].as_f64().unwrap();
 
-                    UserData::new(username.to_string(), color.to_string())
+                    UserData::new(username.to_string(), color.to_string(), 0.0)
                 }).collect();
 
                 Self::Init(players)

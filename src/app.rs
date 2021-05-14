@@ -45,6 +45,7 @@ pub struct Player {
     pub pos: usize,
     pub username: String,
     pub color: String, //Color
+    pub wpm: f64,
     pub finished: bool,
 }
 
@@ -53,6 +54,7 @@ impl Player {
         Self {
             pos: 0,
             color,
+            wpm: 0.0,
             username,
             finished: false,
         }
@@ -108,8 +110,8 @@ impl App {
         }
     }
 
-    pub fn set_players(&mut self, players: &mut Vec<Player>) {
-        self.connection.players.append(players);
+    pub fn set_players(&mut self, players: Vec<Player>) {
+        self.connection.players = players;
     }
     pub fn set_state(&mut self, state: State) {
         self.state = state;
@@ -134,8 +136,7 @@ impl App {
 
         let username = self.config.multiplayer.username.clone();
         let color = self.config.multiplayer.color.clone();
-
-        let join_message = Message::Join(UserData::new(username, color));
+        let join_message = Message::Join(UserData::new(username, color, 0.0));
 
         write.write(join_message.to_string().as_bytes()).await.unwrap();
 
@@ -151,6 +152,7 @@ impl App {
     
                 if !buf.is_empty() {
                     let data = String::from_utf8(buf).unwrap();
+
                     if let Err(e) = event_tx.send(IOEvent::ServerMessage(data)) {
                         panic!("{}", e.to_string());
                     }
@@ -159,6 +161,7 @@ impl App {
         });
 
         self.connection = Connection::new(write);
+        self.connection.enabled = true;
         Ok(())
     }
 
