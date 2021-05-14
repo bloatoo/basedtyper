@@ -37,7 +37,7 @@ fn set_wordlist(mode: &str, wordlist_path: Option<String>, app: &mut App) {
         .collect::<Vec<String>>();
 
     let words: Vec<Word> = words_string
-        .split(" ")
+        .split(' ')
         .enumerate()
         .map(|(index, item)| Word::new(item, &defs[index][..]))
         .collect();

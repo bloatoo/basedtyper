@@ -2,7 +2,7 @@ use crate::server::Server;
 use serde_json::json;
 pub async fn input_handler(data: String, server: &mut Server) {
     let args: Vec<&str> = data
-        .split(" ")
+        .split(' ')
         .map(|elem| elem.trim())
         .collect();
 

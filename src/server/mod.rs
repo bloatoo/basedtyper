@@ -65,7 +65,7 @@ pub async fn start_server(port: u32) -> Result<(), Box<dyn std::error::Error>> {
                     if let Message::Join(data) = Message::from(message.clone().as_str()) {
                         username = data.username.clone();
 
-                        let new_user_data = UserData::new(data.username.clone(), data.color.clone(), data.wpm.clone());
+                        let new_user_data = UserData::new(data.username.clone(), data.color.clone(), data.wpm);
                         server_clone.forward(Message::Join(new_user_data).to_json().to_string(), data.username.clone()).await;
 
                         write.write(server_clone.create_init_message().await.as_bytes()).await.unwrap();

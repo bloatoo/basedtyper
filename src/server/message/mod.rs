@@ -17,7 +17,7 @@ impl<'a> From<&'a str> for Message {
     fn from(data: &'a str) -> Self {
         let value = serde_json::from_str(&data.to_string());
 
-        if let Err(_) = value {
+        if value.is_err() {
             return Message::Unknown;
         }
 
@@ -29,16 +29,18 @@ impl<'a> From<&'a str> for Message {
             "join" => {
                 let username = data["username"].as_str();
 
-                if let None = username {
+                if username.is_none() {
                     return Message::Unknown;
                 }
+
                 let username = username.unwrap().to_string();
 
                 let color_str = data["color"].as_str();
 
-                if let None = color_str {
+                if color_str.is_none() {
                     return Message::Unknown;
                 }
+
                 let color_str = color_str.unwrap();
 
                 Message::Join(UserData::new(username, Color::from(color_str), 0.0))
@@ -55,7 +57,7 @@ impl<'a> From<&'a str> for Message {
             }
             "finished" => {
                 let wpm = data["wpm"].as_f64();
-                if let None = wpm {
+                if wpm.is_none() {
                     return Message::Unknown;
                 }
 

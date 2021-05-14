@@ -26,13 +26,12 @@ impl Server {
             serde_json::from_str(&UserData::new(client.username.clone(), Color::from(&client.color[..]), client.wpm).to_string()[..]).unwrap()
         }).collect::<Vec<Value>>();
 
-        let data = json!({
+        json!({
             "call": "init",
             "data": {
                 "players": Value::Array(data)
             }
-        }).to_string();
-        data
+        }).to_string()
     }
 
     pub async fn broadcast(&mut self, data: String) {

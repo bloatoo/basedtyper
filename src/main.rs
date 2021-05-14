@@ -31,11 +31,11 @@ fn panic_hook(info: &PanicInfo<'_>) {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args();
 
-    match args.nth(1) {
+    match args.next() {
         Some(val) => {
             match val.as_str() {
                 "serve" => {
-                    let port: u32 = match args.nth(0) {
+                    let port: u32 = match args.next() {
                         Some(arg) => arg.trim().parse().unwrap_or(1337),
                         None => 1337
                     };
@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 "generate" => {
-                    match args.nth(0) {
+                    match args.next() {
                         Some(path) => wordlist_generator::generate_wordlist(path).await.unwrap(),
                         None => println!("No file path was given."),
                     }
@@ -59,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let (event_tx, event_rx) = std::sync::mpsc::channel();
 
-            let app = Arc::new(Mutex::new(App::new()));
+            let app = Arc::new(Mutex::new(App::default()));
             let app_clone = app.clone();
     
             let handler = EventHandler::new(app_clone);

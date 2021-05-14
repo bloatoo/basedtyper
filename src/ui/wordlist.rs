@@ -7,8 +7,7 @@ pub struct Wordlist {
 impl From<String> for Wordlist {
     fn from(data: String) -> Self {
         let words = data
-            .to_string()
-            .split(" ")
+            .split(' ')
             .map(|word| Word::new(word, ""))
             .collect();
 

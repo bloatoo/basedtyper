@@ -30,7 +30,7 @@ impl EventHandler {
             IOEvent::ServerMessage(msg) => {
                 match ServerMessage::from(msg) {
                     ServerMessage::Start(words) => {
-                        let wordlist = Wordlist::from(words.to_string());
+                        let wordlist = Wordlist::from(words);
 
                         app.wordlist = wordlist;
 

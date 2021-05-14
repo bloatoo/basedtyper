@@ -85,14 +85,13 @@ pub enum State {
     HostPrompt,
 }
 
-impl App {
-    pub fn new() -> Self {
+impl Default for App {
+    fn default() -> Self {
         let config = Config::new();
 
-        let (config, err) = if config.is_err() {
-            (Config::default(), config.err().unwrap().to_string())
-        } else { 
-            (config.unwrap(), String::new()) 
+        let (config, err) = match config {
+            Ok(conf) => (conf, String::new()),
+            Err(e) => (Config::default(), e.to_string())
         };
 
         Self {
@@ -109,7 +108,8 @@ impl App {
             chunks: vec![],
         }
     }
-
+}
+impl App {
     pub fn set_players(&mut self, players: Vec<Player>) {
         self.connection.players = players;
     }
