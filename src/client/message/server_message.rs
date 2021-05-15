@@ -14,6 +14,7 @@ pub enum ServerMessage {
 impl From<String> for ServerMessage {
     fn from(data: String) -> Self {
         let json = serde_json::from_str(&data);
+
         if json.is_err() {
             return Self::Unknown
         }

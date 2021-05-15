@@ -132,7 +132,7 @@ pub fn draw_wordlist_prompt<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App
     f.render_widget(center(spans), chunk);
 }
 
-pub fn draw_multiplayer_end_screen<T: Backend>(f: &mut Frame<T>, chunk: Rect, _app: &App) {
+pub fn draw_multiplayer_end_screen<T: Backend>(f: &mut Frame<T>, chunk: Rect, app: &App) {
     let mut ui_text = spans(chunk.height);
 
     let spans = vec![
@@ -148,6 +148,13 @@ pub fn draw_multiplayer_end_screen<T: Backend>(f: &mut Frame<T>, chunk: Rect, _a
 
     for (idx, span) in spans.iter().enumerate() {
         ui_text[chunk.height as usize / 2 + idx] = span.clone(); 
+    }
+
+    for (idx, player) in app.connection.players.iter().enumerate() {
+        ui_text[chunk.height as usize / 4 + idx] = Spans::from(vec![
+            Span::styled(player.username.clone(), Style::default().add_modifier(Modifier::BOLD).fg(string_to_color(player.color.clone()))),
+            Span::raw(format!(": {:.2}", player.wpm))
+        ])
     }
 
     f.render_widget(center(ui_text), chunk);
