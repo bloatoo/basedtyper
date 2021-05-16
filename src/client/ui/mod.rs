@@ -152,7 +152,10 @@ pub fn draw_multiplayer_end_screen<T: Backend>(f: &mut Frame<T>, chunk: Rect, ap
 
     for (idx, player) in app.connection.players.iter().enumerate() {
         ui_text[chunk.height as usize / 4 + idx] = Spans::from(vec![
-            Span::styled(player.username.clone(), Style::default().add_modifier(Modifier::BOLD).fg(string_to_color(player.color.clone()))),
+            match player.finished {
+                true => Span::styled(format!("{} (finished)", player.username.clone()), Style::default().add_modifier(Modifier::BOLD).fg(string_to_color(player.color.clone()))),
+                false => Span::styled(player.username.clone(), Style::default().add_modifier(Modifier::BOLD).fg(string_to_color(player.color.clone()))),
+            },
             Span::raw(format!(": {:.2}", player.wpm))
         ])
     }
