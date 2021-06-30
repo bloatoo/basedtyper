@@ -65,9 +65,7 @@ fn exit() -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::main]
 async fn handle_events(mut handler: EventHandler, rx: Receiver<IOEvent>) {
-    loop {
-        if let Ok(ev) = rx.try_recv() {
-            handler.handle_event(ev).await;
-        }
+    while let Ok(ev) = rx.recv() {
+        handler.handle_event(ev).await;
     }
 }
